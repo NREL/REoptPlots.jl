@@ -1,0 +1,7 @@
+name = "REoptPlots"
+uuid = "81d7bfe7-808b-4a8e-bf67-c3577adb378e"
+authors = ["Nick Laws <nick.laws@nrel.gov>"]
+version = "0.1.0"
+
+[deps]
+PlotlyJS = "f0f68f2c-4968-5e81-91da-67840de0976a"
