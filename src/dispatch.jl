@@ -95,7 +95,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch")
 
     layout = PlotlyJS.Layout()
 
-    if "Storage" in keys(d)
+    if "ElectricStorage" in keys(d)
         # invisible line for stacking
         push!(traces, PlotlyJS.scatter(
             name = "invisible",
@@ -111,7 +111,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch")
         push!(traces, PlotlyJS.scatter(
             name = "battery+PV+grid supply",
             x = 1:T,
-            y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load .+ d["Storage"]["year_one_to_load_series_kw"],
+            y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load .+ d["ElectricStorage"]["year_one_to_load_series_kw"],
             fill = "tonexty",
             marker = PlotlyJS.attr(
                 color="rgb(44, 160, 44)",
@@ -121,9 +121,9 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch")
             ),
         ))
         push!(traces, PlotlyJS.scatter(
-            name = "storage SOC",
+            name = "ElectricStorage SOC",
             x = 1:T,
-            y = d["Storage"]["year_one_soc_series_pct"],
+            y = d["ElectricStorage"]["year_one_soc_series_pct"],
             yaxis="y2",
             marker = PlotlyJS.attr(
                 color="rgb(100,100,100)",

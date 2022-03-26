@@ -28,11 +28,11 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 function efc(d)
-    if "EFC" in keys(d["Storage"])
-        return d["Storage"]["EFC"]
+    if "EFC" in keys(d["ElectricStorage"])
+        return d["ElectricStorage"]["EFC"]
     end
     # TODO use REoptInputs for initial SOC 
-    power = diff(append!([0.5], d["Storage"]["year_one_soc_series_pct"]))
+    power = diff(append!([0.5], d["ElectricStorage"]["year_one_soc_series_pct"]))
     abs_power = abs.(power)
     efc = zeros(365)
     # TODO handle time resolution other than hourly
@@ -53,8 +53,8 @@ function plot_violin_compare_soc_efc(d1::Dict, d2::Dict;
     name_efc_2="EFC with degr.",
     )
 
-    soc1 = d1["Storage"]["year_one_soc_series_pct"]
-    soc2 = d2["Storage"]["year_one_soc_series_pct"]
+    soc1 = d1["ElectricStorage"]["year_one_soc_series_pct"]
+    soc2 = d2["ElectricStorage"]["year_one_soc_series_pct"]
 
     efc1 = efc(d1)
     efc2 = efc(d2)
