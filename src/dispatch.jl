@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch")
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false)
 
     traces = PlotlyJS.GenericTrace[]
 
@@ -141,7 +141,12 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch")
             )
         )
     end
+    p = PlotlyJS.plot(traces, layout)
 
-    PlotlyJS.plot(traces, layout)
+    if save_html
+        PlotlyJS.savefig(p, replace(title, " " => "_") * ".html")
+    end
+
+    PlotlyJS.plot(traces, layout)  # will not produce plot in a loop
 
 end
