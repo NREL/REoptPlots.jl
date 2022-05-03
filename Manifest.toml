@@ -53,9 +53,9 @@ deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
 
 [[deps.DataAPI]]
-git-tree-sha1 = "cc70b17275652eb47bc9e5f81635981f13cea5c8"
+git-tree-sha1 = "fb5f5316dd3fd4c5e7c30a24d50643b73e37cd40"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
-version = "1.9.0"
+version = "1.10.0"
 
 [[deps.DataValueInterfaces]]
 git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
@@ -249,9 +249,9 @@ version = "0.12.3"
 
 [[deps.Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "85b5da0fa43588c75bb1ff986493443f821c70b7"
+git-tree-sha1 = "1285416549ccfcdf0c50d4997a94331e88d68413"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.2.3"
+version = "2.3.1"
 
 [[deps.Pidfile]]
 deps = ["FileWatching", "Test"]
@@ -277,9 +277,9 @@ version = "0.18.8"
 
 [[deps.Preferences]]
 deps = ["TOML"]
-git-tree-sha1 = "d3538e7f8a790dc8903519090857ef8e1283eecd"
+git-tree-sha1 = "47e5f437cc0e7ef2ce8406ce1e7e24d44915f88d"
 uuid = "21216c6a-2e73-6563-6e65-726566657250"
-version = "1.2.5"
+version = "1.3.0"
 
 [[deps.Printf]]
 deps = ["Unicode"]
