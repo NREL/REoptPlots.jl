@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, year::Int=2021, T::Int=8760)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, year::Int=2021)
 
     traces = PlotlyJS.GenericTrace[]
 
@@ -37,6 +37,9 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         xaxis_title_text = "time step",
         yaxis_title_text = "kW"
     )
+
+    eload = d["ElectricLoad"]["load_series_kw"]
+    T = length(eload)
 
     # x axis resolution is determined by length of T and year
     x_axis = DateTime(year):Dates.Minute(Int(60*(8760/T))):DateTime(year,12,31,23,45)
