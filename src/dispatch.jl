@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, year::Int=2021, T::Int=8760)
 
     traces = PlotlyJS.GenericTrace[]
 
@@ -37,13 +37,13 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         xaxis_title_text = "time step",
         yaxis_title_text = "kW"
     )
-    
-    eload = d["ElectricLoad"]["load_series_kw"]
-    T = length(eload)
+
+    # x axis resolution is determined by length of T and year
+    x_axis = DateTime(year):Dates.Minute(Int(60*(8760/T))):DateTime(year,12,31,23,45)
 
     push!(traces, PlotlyJS.scatter(
         name = "total load",
-        x = 1:T,
+        x = x_axis,
         y = d["ElectricLoad"]["load_series_kw"],
         fill = "none",
         line = PlotlyJS.attr(
@@ -53,7 +53,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     push!(traces, PlotlyJS.scatter(
         name = "grid supply",
-        x = 1:T,
+        x = x_axis,
         y = d["ElectricUtility"]["year_one_to_load_series_kw"],
         fill = "tozeroy",
         marker = PlotlyJS.attr(
@@ -66,7 +66,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     # invisible line for stacking
     push!(traces, PlotlyJS.scatter(
         name = "invisible",
-        x = 1:T,
+        x = x_axis,
         y = d["ElectricUtility"]["year_one_to_load_series_kw"],
         fill = Nothing,
         line = PlotlyJS.attr(
@@ -81,7 +81,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         pv_to_load = d["PV"]["year_one_to_load_series_kw"]
         push!(traces, PlotlyJS.scatter(
             name = "PV+grid supply",
-            x = 1:T,
+            x = x_axis,
             y = pv_to_load .+ d["ElectricUtility"]["year_one_to_load_series_kw"],
             fill = "tonexty",
             marker = PlotlyJS.attr(
@@ -99,7 +99,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         # invisible line for stacking
         push!(traces, PlotlyJS.scatter(
             name = "invisible",
-            x = 1:T,
+            x = x_axis,
             y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load,
             fill = Nothing,
             line = PlotlyJS.attr(
@@ -110,7 +110,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         ))
         push!(traces, PlotlyJS.scatter(
             name = "battery+PV+grid supply",
-            x = 1:T,
+            x = x_axis,
             y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load .+ d["ElectricStorage"]["year_one_to_load_series_kw"],
             fill = "tonexty",
             marker = PlotlyJS.attr(
@@ -122,7 +122,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         ))
         push!(traces, PlotlyJS.scatter(
             name = "ElectricStorage SOC",
-            x = 1:T,
+            x = x_axis,
             y = d["ElectricStorage"]["year_one_soc_series_pct"],
             yaxis="y2",
             marker = PlotlyJS.attr(
@@ -151,7 +151,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
 end
 
-function plot_thermal_dispatch(d::Dict; title="Thermal Systems Dispatch", save_html=false)
+function plot_thermal_dispatch(d::Dict; title::String="Thermal Systems Dispatch", save_html::Bool=false, year::Int=2021, T::Int=8760)
 
     traces = PlotlyJS.GenericTrace[]
 
@@ -165,15 +165,9 @@ function plot_thermal_dispatch(d::Dict; title="Thermal Systems Dispatch", save_h
             side = "right"
         )
     )
-
-    if "ExistingChiller" in keys(d)
-        T = length(d["ExistingChiller"]["year_one_electric_consumption_series"])
-    else
-        T = 8760
-    end
     
-    # x axis resolution is determined by length of T.
-    x_axis = DateTime(2021):Dates.Minute(Int(60*(8760/T))):DateTime(2021,12,31,23,45)
+    # x axis resolution is determined by length of T and year
+    x_axis = DateTime(year):Dates.Minute(Int(60*(8760/T))):DateTime(year,12,31,23,45)
 
     node_temps_bau = zeros(T)
     node_temps = zeros(T)

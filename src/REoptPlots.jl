@@ -1,6 +1,7 @@
 module REoptPlots
 
 using PlotlyJS
+using Dates
 
 export
     plot_violin_compare_soc_efc,
