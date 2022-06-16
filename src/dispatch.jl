@@ -150,3 +150,75 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     PlotlyJS.plot(traces, layout)  # will not produce plot in a loop
 
 end
+
+function plot_thermal_dispatch(d::Dict; title="Thermal Systems Dispatch", save_html=false)
+
+    traces = PlotlyJS.GenericTrace[]
+
+    layout = PlotlyJS.Layout(
+        title_text = "",
+        xaxis_title_text = "time step",
+        yaxis_title_text = "kW",
+        yaxis2 = (
+            title = "temp [C]",
+            overlaying = "y",
+            side = "right"
+        )
+    )
+
+    if "ExistingChiller" in keys(d)
+        T = length(d["ExistingChiller"]["year_one_electric_consumption_series"])
+    else
+        T = 8760
+    end
+    
+    # x axis resolution is determined by length of T.
+    x_axis = DateTime(2021):Dates.Minute(Int(60*(8760/T))):DateTime(2021,12,31,23,45)
+
+    node_temps_bau = zeros(T)
+    node_temps = zeros(T)
+
+    if "FlexibleHVAC" in keys(d)
+        node_temps_bau = reduce(hcat,d["FlexibleHVAC"]["temperatures_degC_node_by_time_bau"])'[:,3]
+        push!(traces, PlotlyJS.scatter(
+            name = "BAU node temps",
+            x = x_axis,
+            y = node_temps_bau,
+            line = PlotlyJS.attr(
+                width = 1
+            ),
+            yaxis = "y2",
+        ))
+
+        node_temps = reduce(hcat,d["FlexibleHVAC"]["temperatures_degC_node_by_time"])'[:,3]
+        push!(traces, PlotlyJS.scatter(
+            name = "Node temps",
+            x = x_axis,
+            y = node_temps,
+            line = PlotlyJS.attr(
+                width = 1
+            ),
+            yaxis = "y2",
+        ))
+    end;
+
+    if "ExistingChiller" in keys(d)
+        elec_chiller_to_load = d["ExistingChiller"]["year_one_electric_consumption_series"]
+        push!(traces, PlotlyJS.scatter(
+            name = "Elec. chiller kWh series",
+            x = x_axis,
+            y = elec_chiller_to_load,
+            line = PlotlyJS.attr(
+                width = 1
+            ),
+        ))
+    end;
+
+    p = PlotlyJS.plot(traces, layout)
+
+    if save_html
+        PlotlyJS.savefig(p, replace(title, " " => "_") * ".html")
+    end
+
+    return PlotlyJS.plot(traces, layout)
+end;
