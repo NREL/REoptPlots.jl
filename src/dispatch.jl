@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, year::Int=2021)
 
     traces = PlotlyJS.GenericTrace[]
 
@@ -37,13 +37,16 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         xaxis_title_text = "time step",
         yaxis_title_text = "kW"
     )
-    
+
     eload = d["ElectricLoad"]["load_series_kw"]
     T = length(eload)
 
+    # x axis resolution is determined by length of T and year
+    x_axis = DateTime(year):Dates.Minute(Int(60*(8760/T))):DateTime(year,12,31,23,45)
+
     push!(traces, PlotlyJS.scatter(
         name = "total load",
-        x = 1:T,
+        x = x_axis,
         y = d["ElectricLoad"]["load_series_kw"],
         fill = "none",
         line = PlotlyJS.attr(
@@ -53,7 +56,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     push!(traces, PlotlyJS.scatter(
         name = "grid supply",
-        x = 1:T,
+        x = x_axis,
         y = d["ElectricUtility"]["year_one_to_load_series_kw"],
         fill = "tozeroy",
         marker = PlotlyJS.attr(
@@ -66,7 +69,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     # invisible line for stacking
     push!(traces, PlotlyJS.scatter(
         name = "invisible",
-        x = 1:T,
+        x = x_axis,
         y = d["ElectricUtility"]["year_one_to_load_series_kw"],
         fill = Nothing,
         line = PlotlyJS.attr(
@@ -81,7 +84,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         pv_to_load = d["PV"]["year_one_to_load_series_kw"]
         push!(traces, PlotlyJS.scatter(
             name = "PV+grid supply",
-            x = 1:T,
+            x = x_axis,
             y = pv_to_load .+ d["ElectricUtility"]["year_one_to_load_series_kw"],
             fill = "tonexty",
             marker = PlotlyJS.attr(
@@ -99,7 +102,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         # invisible line for stacking
         push!(traces, PlotlyJS.scatter(
             name = "invisible",
-            x = 1:T,
+            x = x_axis,
             y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load,
             fill = Nothing,
             line = PlotlyJS.attr(
@@ -110,7 +113,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         ))
         push!(traces, PlotlyJS.scatter(
             name = "battery+PV+grid supply",
-            x = 1:T,
+            x = x_axis,
             y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load .+ d["ElectricStorage"]["year_one_to_load_series_kw"],
             fill = "tonexty",
             marker = PlotlyJS.attr(
@@ -122,7 +125,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         ))
         push!(traces, PlotlyJS.scatter(
             name = "ElectricStorage SOC",
-            x = 1:T,
+            x = x_axis,
             y = d["ElectricStorage"]["year_one_soc_series_pct"],
             yaxis="y2",
             marker = PlotlyJS.attr(
@@ -149,4 +152,70 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     PlotlyJS.plot(traces, layout)  # will not produce plot in a loop
 
+end
+
+function plot_thermal_dispatch(d::Dict; title::String="Thermal Systems Dispatch", save_html::Bool=false, year::Int=2021, T::Int=8760)
+
+    traces = PlotlyJS.GenericTrace[]
+
+    layout = PlotlyJS.Layout(
+        title_text = "",
+        xaxis_title_text = "time step",
+        yaxis_title_text = "kW",
+        yaxis2 = (
+            title = "temp [C]",
+            overlaying = "y",
+            side = "right"
+        )
+    )
+    
+    # x axis resolution is determined by length of T and year
+    x_axis = DateTime(year):Dates.Minute(Int(60*(8760/T))):DateTime(year,12,31,23,45)
+
+    node_temps_bau = zeros(T)
+    node_temps = zeros(T)
+
+    if "FlexibleHVAC" in keys(d)
+        node_temps_bau = reduce(hcat,d["FlexibleHVAC"]["temperatures_degC_node_by_time_bau"])'[:,3]
+        push!(traces, PlotlyJS.scatter(
+            name = "BAU node temps",
+            x = x_axis,
+            y = node_temps_bau,
+            line = PlotlyJS.attr(
+                width = 1
+            ),
+            yaxis = "y2",
+        ))
+
+        node_temps = reduce(hcat,d["FlexibleHVAC"]["temperatures_degC_node_by_time"])'[:,3]
+        push!(traces, PlotlyJS.scatter(
+            name = "Node temps",
+            x = x_axis,
+            y = node_temps,
+            line = PlotlyJS.attr(
+                width = 1
+            ),
+            yaxis = "y2",
+        ))
+    end;
+
+    if "ExistingChiller" in keys(d)
+        elec_chiller_to_load = d["ExistingChiller"]["year_one_electric_consumption_series"]
+        push!(traces, PlotlyJS.scatter(
+            name = "Elec. chiller kWh series",
+            x = x_axis,
+            y = elec_chiller_to_load,
+            line = PlotlyJS.attr(
+                width = 1
+            ),
+        ))
+    end;
+
+    p = PlotlyJS.plot(traces, layout)
+
+    if save_html
+        PlotlyJS.savefig(p, replace(title, " " => "_") * ".html")
+    end
+
+    return PlotlyJS.plot(traces, layout)
 end
