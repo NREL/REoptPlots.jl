@@ -218,4 +218,4 @@ function plot_thermal_dispatch(d::Dict; title::String="Thermal Systems Dispatch"
     end
 
     return PlotlyJS.plot(traces, layout)
-end;
+end
