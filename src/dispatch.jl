@@ -167,7 +167,7 @@ function plot_mpc_dispatch(d::Dict; title="MPC Dispatch", save_html=false)
     T = length(eload)
 
     push!(traces, PlotlyJS.scatter(
-        name = "total load",
+        name = "base load",
         x = 1:T,
         y = d["ElectricLoad"]["load_series_kw"],
         fill = "none",
@@ -176,10 +176,14 @@ function plot_mpc_dispatch(d::Dict; title="MPC Dispatch", save_html=false)
         ),
     ))
 
+    grid_to_batt = zeros(T)
+    if "to_battery_series_kw" in keys(d["ElectricUtility"])  # then add 
+        grid_to_batt = d["ElectricUtility"]["to_battery_series_kw"]
+    end
     push!(traces, PlotlyJS.scatter(
         name = "grid supply",
         x = 1:T,
-        y = d["ElectricUtility"]["to_load_series_kw"],
+        y = d["ElectricUtility"]["to_load_series_kw"] .+ grid_to_batt,
         fill = "tozeroy",
         marker = PlotlyJS.attr(
             color="rgb(12,12,12)",
