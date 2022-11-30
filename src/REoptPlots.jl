@@ -4,7 +4,8 @@ using PlotlyJS
 
 export
     plot_violin_compare_soc_efc,
-    plot_electric_dispatch
+    plot_electric_dispatch,
+    plot_mpc_dispatch
 
 include("dispatch.jl")
 include("battery_degradation.jl")
