@@ -43,7 +43,7 @@ function rec_flatten_dict(d, prefix_delim = ".")
 end
 
 
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
 
     traces = PlotlyJS.GenericTrace[]
 
