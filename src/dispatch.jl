@@ -27,6 +27,21 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
+function rec_flatten_dict(d, prefix_delim = ".")
+    new_d = empty(d)
+    for (key, value) in pairs(d)
+        if isa(value, Dict)
+             flattened_value = rec_flatten_dict(value, prefix_delim)
+             for (ikey, ivalue) in pairs(flattened_value)
+                 new_d["$key.$ikey"] = ivalue
+             end
+        else
+            new_d[key] = value
+        end
+    end
+    return new_d
+end
+
 
 function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false)
 
@@ -34,40 +49,105 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     layout = PlotlyJS.Layout(
         title_text = title,
-        xaxis_title_text = "time step",
-        yaxis_title_text = "kW"
-    )
+        yaxis_title_text = "Power (kW)",
+        )
     
+    #Dates Dataframe
+    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2017,1,1,0,0,0)
+    dr_v = collect(dr)
+    pop!(dr_v)
+    
+    ###Plot Stats
+    df_stat = rec_flatten_dict(d)
+	load  = get(df_stat,"ElectricLoad.load_series_kw","-")
+	avg_val = round(mean(load))
+	max_val = round(maximum(load))
+	min_val = round(minimum(load))
+
+    x_stat = [first(dr_v),dr_v[end-100]]
+	y_stat1 = [min_val,min_val]
+	y_stat2 = [max_val,max_val]
+	y_stat3 = [avg_val,avg_val]
+    
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat1,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot"),
+	mode="lines+text",
+    name=String("Min = $(min_val) kW"),
+    text=[String("Min = $(min_val) kW")],
+    textposition="top right"
+		)
+	)
+
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat2,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot"),
+	mode="lines+text",
+    name=String("Max = $(max_val) kW"),
+    text=[String("Max = $(max_val) kW")],
+    textposition="top right"
+		)
+	)
+
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat3,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot"),
+	mode="lines+text",
+    name=String("Avg = $(avg_val) kW"),
+    text=[String("Avg = $(avg_val) kW")],
+    textposition="top right"
+		)
+	)
+	
+    ### REopt Data Plotting
     eload = d["ElectricLoad"]["load_series_kw"]
     T = length(eload)
 
+    ### Electric Load Line Plot
     push!(traces, PlotlyJS.scatter(
-        name = "total load",
-        x = 1:T,
+        name = "Total Electric Load",
+        x = dr_v,
         y = d["ElectricLoad"]["load_series_kw"],
         fill = "none",
         line = PlotlyJS.attr(
-            width = 3
+            width = 0.5
         ),
+        marker = PlotlyJS.attr(
+            color="#003f5c",
+        )
     ))
 
+    ### Grid to Load Fill-In
     push!(traces, PlotlyJS.scatter(
-        name = "grid supply",
-        x = 1:T,
-        y = d["ElectricUtility"]["year_one_to_load_series_kw"],
+        name = "Grid Serving Load",
+        x = dr_v,
+        y = d["ElectricUtility"]["electric_to_load_series_kw"],
         fill = "tozeroy",
         marker = PlotlyJS.attr(
-            color="rgb(12,12,12)",
+            color="#0000ff",
         ),
         line = PlotlyJS.attr(
             width = 0
         ),
     ))
-    # invisible line for stacking
+
+    ### Invisible line for stacking
     push!(traces, PlotlyJS.scatter(
         name = "invisible",
-        x = 1:T,
-        y = d["ElectricUtility"]["year_one_to_load_series_kw"],
+        x = dr_v,
+        y = d["ElectricUtility"]["electric_to_load_series_kw"],
         fill = Nothing,
         line = PlotlyJS.attr(
             width = 0
@@ -76,31 +156,52 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         hoverinfo = "skip",
     ))
 
+    ### PV to load Fill-In
     pv_to_load = zeros(T)
     if "PV" in keys(d)  # TODO multiple PVs
-        pv_to_load = d["PV"]["year_one_to_load_series_kw"]
+        pv_to_load = d["PV"]["electric_to_load_series_kw"],
         push!(traces, PlotlyJS.scatter(
-            name = "PV+grid supply",
-            x = 1:T,
-            y = pv_to_load .+ d["ElectricUtility"]["year_one_to_load_series_kw"],
+            name = "PV Serving Load",
+            x = dr_v,
+            y = d["PV"]["electric_to_load_series_kw"] .+ 										    d["ElectricUtility"]["electric_to_load_series_kw"],
             fill = "tonexty",
             marker = PlotlyJS.attr(
-                color="rgb(255, 127, 14)",
+                color="#ffa600",
             ),
             line = PlotlyJS.attr(
                 width = 0
             ),
         ))
+
     end
+    layout = PlotlyJS.Layout(
+		    hovermode="closest",
+        	hoverlabel_align="left",
+			plot_bgcolor="white",
+	        paper_bgcolor="white",
+		    font_size=18,
+       		xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                   linewidth=1.5, zeroline=false),
+        	yaxis=attr(showline=true, ticks="outside", showgrid=true,
+                   linewidth=1.5, zeroline=false, color="black"),
+		    title = title,
+            xaxis_title = "",
+            yaxis_title = "Power (kW)",
+			xaxis_rangeslider_visible=true,
+			legend=attr(x=1.07, y=0.5, 
+						font=attr(
+			            size=14,
+			            color="black")
+						)
+	)
 
-    layout = PlotlyJS.Layout()
-
+    ### Battery to load Fill-IN
     if "ElectricStorage" in keys(d)
         # invisible line for stacking
         push!(traces, PlotlyJS.scatter(
-            name = "invisible",
-            x = 1:T,
-            y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load,
+            name = "invisible",			
+            x = dr_v,
+			y = d["ElectricUtility"]["electric_to_load_series_kw"] .+ d["PV"]["electric_to_load_series_kw"],
             fill = Nothing,
             line = PlotlyJS.attr(
                 width = 0
@@ -108,38 +209,89 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             showlegend = false,
             hoverinfo = "skip",
         ))
+
         push!(traces, PlotlyJS.scatter(
-            name = "battery+PV+grid supply",
-            x = 1:T,
-            y = d["ElectricUtility"]["year_one_to_load_series_kw"] .+ pv_to_load .+ d["ElectricStorage"]["year_one_to_load_series_kw"],
+            name = "Battery Serving Load",
+            x = dr_v,
+            y = d["ElectricUtility"]["electric_to_load_series_kw"] .+ 								d["PV"]["electric_to_load_series_kw"] .+ 
+				d["ElectricStorage"]["storage_to_load_series_kw"],
             fill = "tonexty",
             marker = PlotlyJS.attr(
-                color="rgb(44, 160, 44)",
+                color="#e700b3",
             ),
             line = PlotlyJS.attr(
                 width = 0
             ),
         ))
+        ### Battery SOC line plot
         push!(traces, PlotlyJS.scatter(
-            name = "ElectricStorage SOC",
-            x = 1:T,
-            y = d["ElectricStorage"]["year_one_soc_series_pct"],
+            name = "Battery State of Charge",
+            x = dr_v,
+            y = d["ElectricStorage"]["soc_series_fraction"]*100,
             yaxis="y2",
+            line = PlotlyJS.attr(
+            dash= "dashdot",
+            width = 1
+            ),
             marker = PlotlyJS.attr(
-                color="rgb(100,100,100)",
+                color="rgb(100,100,100)"
             ),
         ))
 
         layout = PlotlyJS.Layout(
-            title_text = title,
-            xaxis_title_text = "time step",
-            yaxis_title_text = "kW",
+			hovermode="closest",
+        	hoverlabel_align="left",
+			plot_bgcolor="white",
+	        paper_bgcolor="white",
+		    font_size=18,
+       		xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                   linewidth=1.5, zeroline=false),
+        	yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                   linewidth=1.5, zeroline=false),
+            xaxis_title = "",
+            yaxis_title = "Power (kW)",
+			xaxis_rangeslider_visible=true,
+			legend=attr(x=1.07, y=0.5, 
+						font=attr(
+			            size=14,
+			            color="black")
+						),
             yaxis2 = PlotlyJS.attr(
-                title = "SOC",
+                title = "State of Charge (Percent)",
                 overlaying = "y",
                 side = "right"
             )
+			
         )
+    end
+
+        ### Generator to load Fill-In
+	    if "Generator" in keys(d)
+        # invisible line for stacking
+        push!(traces, PlotlyJS.scatter(
+            name = "invisible",
+            x = dr_v,
+            y = d["ElectricUtility"]["electric_to_load_series_kw"] .+ d["PV"]["electric_to_load_series_kw"] .+ 											d["ElectricStorage"]["storage_to_load_series_kw"], 
+            fill = Nothing,
+            line = PlotlyJS.attr(
+                width = 0
+            ),
+            showlegend = false,
+            hoverinfo = "skip",
+        ))
+				
+        push!(traces, PlotlyJS.scatter(
+            name = "Generator Serving Load",
+            x = dr_v,
+			y = d["ElectricUtility"]["electric_to_load_series_kw"] .+ d["PV"]["electric_to_load_series_kw"] .+ 								d["ElectricStorage"]["storage_to_load_series_kw"] .+					d["Generator"]["electric_to_load_series_kw"],
+            fill = "tonexty",
+            marker = PlotlyJS.attr(
+                color="#ff552b",
+            ),
+            line = PlotlyJS.attr(
+                width = 0
+            ),
+        ))
     end
     p = PlotlyJS.plot(traces, layout)
 
