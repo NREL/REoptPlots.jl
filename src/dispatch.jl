@@ -53,7 +53,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         )
     
     #Dates Dataframe
-    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2017,1,1,0,0,0)
+    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)
     pop!(dr_v)
     
