@@ -27,22 +27,6 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function rec_flatten_dict(d, prefix_delim = ".")
-    new_d = empty(d)
-    for (key, value) in pairs(d)
-        if isa(value, Dict)
-             flattened_value = rec_flatten_dict(value, prefix_delim)
-             for (ikey, ivalue) in pairs(flattened_value)
-                 new_d["$key.$ikey"] = ivalue
-             end
-        else
-            new_d[key] = value
-        end
-    end
-    return new_d
-end
-
-
 function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
 
     traces = PlotlyJS.GenericTrace[]
@@ -301,4 +285,19 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     PlotlyJS.plot(traces, layout)  # will not produce plot in a loop
 
+end
+
+function rec_flatten_dict(d, prefix_delim = ".")
+    new_d = empty(d)
+    for (key, value) in pairs(d)
+        if isa(value, Dict)
+             flattened_value = rec_flatten_dict(value, prefix_delim)
+             for (ikey, ivalue) in pairs(flattened_value)
+                 new_d["$key.$ikey"] = ivalue
+             end
+        else
+            new_d[key] = value
+        end
+    end
+    return new_d
 end
