@@ -1,5 +1,12 @@
 # REoptPlots Changelog
 
+## v0.1.3
+### Added
+    - Generator plot
+    - Stats Plot
+### Fixed
+    - updated name changes: pct -> fraction
+
 ## v0.1.2
 - Pkg.rm("REopt") no need for dependency
 
