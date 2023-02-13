@@ -36,23 +36,19 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
      #Dates Dataframe
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)    
-    data_arrays = []
-    plots = []
-    
+    data_array = []
     for key in keys
-        if haskey(d, key)
+        if haskey(dict, key)
             for list_name in list_names
-                if haskey(d[key], list_name)
-                    data_array = d[key][list_name]
-                    push!(data_arrays, data_array)
+                if haskey(dict[key], list_name)
+                    new_data_array = dict[key][list_name]
+                    data_array = vcat(data_array, new_data_array)
                     break
                 end
             end
-            plot_data = reduce(vcat, data_arrays)
-            push!(plots, PlotlyJS.scatter(dr_v, y=plot_data[:,2], mode="markers"))
         end
     end
-    PlotlyJS.plot(plots...)
+    PlotlyJS.scatter(dr_v, y=data_array[:,2], mode="markers")
 end
 
 # function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
