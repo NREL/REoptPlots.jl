@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 
-    ####BASE###
+####BASE###
 
 function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
     keys = ["ElectricUtility","PV","Wind","ElectricStorage","Generator","CHP","GHP"]
@@ -40,10 +40,10 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     plots = []
     
     for key in keys
-        if haskey(dict, key)
+        if haskey(d, key)
             for list_name in list_names
-                if haskey(dict[key], list_name)
-                    data_array = dict[key][list_name]
+                if haskey(d[key], list_name)
+                    data_array = d[key][list_name]
                     push!(data_arrays, data_array)
                     break
                 end
