@@ -30,7 +30,7 @@
 
     ####BASE###
 
-function plot_electric_dispatch(d::Dict)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
     keys = ["ElectricUtility","PV","Wind","ElectricStorage","Generator","CHP","GHP"]
     list_names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
      #Dates Dataframe
