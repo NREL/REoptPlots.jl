@@ -30,31 +30,27 @@
 
 ####BASE###
 
-function plot_electric_dispatch(dict)
+function plot_nested_dict(dict)
     keys = ["ElectricUtility","PV","Wind","ElectricStorage","Generator","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)   
-    x = dr_v
+    x_values = dr_v
 
-    y_values = []
+    data = []
     
     for key in keys
         if haskey(dict, key)
-            sub_dict = dict[key]
+            sub_dict = get(dict, key, nothing)
             for name in names
                 if haskey(sub_dict, name)
-                    y = sub_dict[name]
-                    push!(y_values, y)
+                    y_values = get(sub_dict, name, nothing)
+                    push!(data, scatter(x=x_values, y=y_values, mode="markers"))
                 end
             end
         end
     end
-    if length(y_values) > 0
-        PlotlyJS.scatter(dr_v, y_values)
-    else
-        println("No data found")
-    end
+    plot(data)
 end
 
 # function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
