@@ -74,6 +74,22 @@ function plot_electric_dispatch(dict)
         )
     
     total_array = []
+    ### REopt Data Plotting
+    eload = d["ElectricLoad"]["load_series_kw"]
+
+    ### Electric Load Line Plot
+    push!(traces, PlotlyJS.scatter(
+        name = "Total Electric Load",
+        x = dr_v,
+        y = d["ElectricLoad"]["load_series_kw"],
+        fill = "none",
+        line = PlotlyJS.attr(
+            width = 1
+        ),
+        marker = PlotlyJS.attr(
+            color="#003f5c",
+        )
+    ))
 
     for key in keys
         if haskey(dict, key)
