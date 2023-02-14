@@ -85,6 +85,10 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         yaxis_title_text = "Power (kW)",
         )
 
+    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
+    dr_v = collect(dr)
+    pop!(dr_v)
+    
     ###Plot Stats
     df_stat = rec_flatten_dict(dict)
 	load  = get(df_stat,"ElectricLoad.load_series_kw","-")
@@ -138,10 +142,6 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     textposition="top right",
 		)
 	)
-
-    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
-    dr_v = collect(dr)
-    pop!(dr_v)
     
     total_array = []
 
