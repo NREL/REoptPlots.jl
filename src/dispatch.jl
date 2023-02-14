@@ -27,18 +27,6 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function check_time_interval(arr::Array)
-        if length(arr) == 8760
-            interval = Dates.Hour(1)
-        elseif length(arr) == 17520
-            interval = Dates.Minute(30)
-        elseif length(arr) == 35040
-            interval = Dates.Minute(15)
-        else
-            error("Time interval length must be either 8760, 17520, or 35040")
-        end
-        return interval
-    end
 
 function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true,display_stats=true)
     
@@ -205,4 +193,30 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     plot(traces, layout)  # will not produce plot in a loop
 end
 
+function rec_flatten_dict(d, prefix_delim = ".")
+    new_d = empty(d)
+    for (key, value) in pairs(d)
+        if isa(value, Dict)
+             flattened_value = rec_flatten_dict(value, prefix_delim)
+             for (ikey, ivalue) in pairs(flattened_value)
+                 new_d["$key.$ikey"] = ivalue
+             end
+        else
+            new_d[key] = value
+        end
+    end
+    return new_d
+end
 
+function check_time_interval(arr::Array)
+    if length(arr) == 8760
+        interval = Dates.Hour(1)
+    elseif length(arr) == 17520
+        interval = Dates.Minute(30)
+    elseif length(arr) == 35040
+        interval = Dates.Minute(15)
+    else
+        error("Time interval length must be either 8760, 17520, or 35040")
+    end
+    return interval
+end
