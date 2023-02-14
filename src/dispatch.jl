@@ -99,7 +99,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     add_array(d["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
     
-    # colors = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
+    # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     # current_color_index = 1
 
     for a_key in key_names
@@ -154,8 +154,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         xaxis_title = "",
         yaxis_title = "Power (kW)",
         xaxis_rangeslider_visible=true,
-        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black"))
-        )
+        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
 
     p = plot(traces, layout)
 
