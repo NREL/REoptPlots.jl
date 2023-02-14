@@ -135,8 +135,10 @@ function plot_electric_dispatch(dict)
                         name = key,
                         x = dr_v,
                         y = total_array,
-                        fill = "tonexty")
-                      )
+                        fill = "tonexty",
+                        line = PlotlyJS.attr(
+                            width = 0),
+                      ))
                 end
             end
         end
