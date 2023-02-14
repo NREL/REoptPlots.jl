@@ -30,7 +30,7 @@
 
 ####BASE###
 
-function plot_nested_dict(dict)
+function plot_electric_dispatch(dict)
     keys = ["ElectricUtility","PV","Wind","ElectricStorage","Generator","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
