@@ -28,11 +28,25 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true,display_stats=true)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false)
     
-    tech_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     traces = GenericTrace[]
-    eload = d["ElectricLoad"]["load_series_kw"]
+    layout = PlotlyJS.Layout(
+        hovermode="closest",
+        hoverlabel_align="left",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font_size=18,
+        xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
+        yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
+        title = title,
+        xaxis_title = "",
+        yaxis_title = "Power (kW)",
+        xaxis_rangeslider_visible=true,
+        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
+    
+    tech_names  = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+    eload       = d["ElectricLoad"]["load_series_kw"]
 
     #Define year
     year = 2017
@@ -137,6 +151,46 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             sub_dict = d[tech]
             if tech == "ElectricStorage"
                 new_data = sub_dict["storage_to_load_series_kw"]
+
+                ### Battery SOC line plot
+                push!(traces, PlotlyJS.scatter(
+                    name = "Battery State of Charge",
+                    x = dr_v,
+                    y = d["ElectricStorage"]["soc_series_fraction"]*100,
+                    yaxis="y2",
+                    line = PlotlyJS.attr(
+                    dash= "dashdot",
+                    width = 1
+                    ),
+                    marker = PlotlyJS.attr(
+                        color="rgb(100,100,100)"
+                    ),
+                ))
+
+                layout = Layout(
+                    hovermode="closest",
+                    hoverlabel_align="left",
+                    plot_bgcolor="white",
+                    paper_bgcolor="white",
+                    font_size=18,
+                    xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                        linewidth=1.5, zeroline=false),
+                    yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                        linewidth=1.5, zeroline=false),
+                    xaxis_title = "",
+                    yaxis_title = "Power (kW)",
+                    xaxis_rangeslider_visible=true,
+                    legend=attr(x=1.07, y=0.5, 
+                                font=attr(
+                                size=14,
+                                color="black")
+                                ),
+                    yaxis2 = PlotlyJS.attr(
+                        title = "State of Charge (Percent)",
+                        overlaying = "y",
+                        side = "right"
+                    ))
+
             else
                 new_data = sub_dict["electric_to_load_series_kw"]
             end
@@ -168,21 +222,6 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             current_color_index += 1
         end
     end
-    
-    layout = PlotlyJS.Layout(
-        hovermode="closest",
-        hoverlabel_align="left",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font_size=18,
-        xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
-        yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
-        title = title,
-        xaxis_title = "",
-        yaxis_title = "Power (kW)",
-        xaxis_rangeslider_visible=true,
-        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
-
 
     p = plot(traces, layout)
 
