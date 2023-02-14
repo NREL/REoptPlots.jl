@@ -230,24 +230,6 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         end
     end
 
-    ### Battery SOC line plot
-    if "ElectricStorage" in keys(dict)
-        push!(traces, PlotlyJS.scatter(
-            name = "Battery State of Charge",
-            x = dr_v,
-            y = dict["ElectricStorage"]["soc_series_fraction"]*100,
-            yaxis="y2",
-            line = PlotlyJS.attr(
-            dash= "dashdot",
-            width = 1,
-            ),
-            marker = PlotlyJS.attr(
-                color="rgb(100,100,100)",
-            ),
-        ))
-
-    end
-
     p = PlotlyJS.plot(traces, layout)
 
     if save_html
