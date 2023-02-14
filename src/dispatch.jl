@@ -187,6 +187,50 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         ),
     ))
 
+    ### Battery SOC
+    if "ElectricStorage" in keys(dict)
+        ### Battery SOC line plot
+        push!(traces, PlotlyJS.scatter(
+            name = "Battery State of Charge",
+            x = dr_v,
+            y = dict["ElectricStorage"]["soc_series_fraction"]*100,
+            yaxis="y2",
+            line = PlotlyJS.attr(
+            dash= "dashdot",
+            width = 1
+            ),
+            marker = PlotlyJS.attr(
+                color="rgb(100,100,100)"
+            ),
+        ))
+
+        layout = PlotlyJS.Layout(
+            hovermode="closest",
+            hoverlabel_align="left",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font_size=18,
+                xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                    linewidth=1.5, zeroline=false),
+            yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                    linewidth=1.5, zeroline=false),
+            xaxis_title = "",
+            yaxis_title = "Power (kW)",
+            xaxis_rangeslider_visible=true,
+            legend=attr(x=1.07, y=0.5, 
+                        font=attr(
+                        size=14,
+                        color="black")
+                        ),
+            yaxis2 = PlotlyJS.attr(
+                title = "State of Charge (Percent)",
+                overlaying = "y",
+                side = "right"
+            )
+            
+        )
+    end
+    
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
 
@@ -237,49 +281,6 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         end
     end
 
-    ### Battery SOC
-    if "ElectricStorage" in keys(dict)
-        ### Battery SOC line plot
-        push!(traces, PlotlyJS.scatter(
-            name = "Battery State of Charge",
-            x = dr_v,
-            y = dict["ElectricStorage"]["soc_series_fraction"]*100,
-            yaxis="y2",
-            line = PlotlyJS.attr(
-            dash= "dashdot",
-            width = 1
-            ),
-            marker = PlotlyJS.attr(
-                color="rgb(100,100,100)"
-            ),
-        ))
-
-        layout = PlotlyJS.Layout(
-			hovermode="closest",
-        	hoverlabel_align="left",
-			plot_bgcolor="white",
-	        paper_bgcolor="white",
-		    font_size=18,
-       		xaxis=attr(showline=true, ticks="outside", showgrid=false,
-                   linewidth=1.5, zeroline=false),
-        	yaxis=attr(showline=true, ticks="outside", showgrid=false,
-                   linewidth=1.5, zeroline=false),
-            xaxis_title = "",
-            yaxis_title = "Power (kW)",
-			xaxis_rangeslider_visible=true,
-			legend=attr(x=1.07, y=0.5, 
-						font=attr(
-			            size=14,
-			            color="black")
-						),
-            yaxis2 = PlotlyJS.attr(
-                title = "State of Charge (Percent)",
-                overlaying = "y",
-                side = "right"
-            )
-			
-        )
-    end
     p = PlotlyJS.plot(traces, layout)
 
     if save_html
