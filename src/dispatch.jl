@@ -31,15 +31,18 @@
 ####BASE###
 
 function plot_electric_dispatch(dict)
-    keys = ["ElectricUtility","PV","Wind","ElectricStorage","Generator","CHP","GHP"]
+    keys = ["ElectricUtility","PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)   
+
     traces = PlotlyJS.GenericTrace[]
     layout = PlotlyJS.Layout(
         title_text = "Electric Systems Dispatch",
         yaxis_title_text = "Power (kW)",
         )
+    
+    result_array = []
 
     for key in keys
         if haskey(dict, key)
@@ -47,13 +50,30 @@ function plot_electric_dispatch(dict)
             for name in names
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
+                    # invisible line for stacking 
+                    push!(result_array, data_array)
+                    result = zeros(length(data_array))
+                    for (i, element) in enumerate(result_array)
+                        result[i % length(data_array)] += element
+                    end
+
+                    push!(traces, PlotlyJS.scatter(
+                        name = "invisible",
+                        x = dr_v,
+                        y_sum = result,
+                        fill = Nothing,
+                        line = PlotlyJS.attr(
+                            width = 0
+                        ),
+                        showlegend = false,
+                        hoverinfo = "skip",
+                    ))
+                    #plot each technology
                     push!(traces, PlotlyJS.scatter(
                         name = key,
                         x = dr_v,
                         y = data_array,
-                        fill = "tonexty",
-                        line = PlotlyJS.attr(width = 0)
-                        )
+                        fill = "tonexty")
                     )
                 end
             end
