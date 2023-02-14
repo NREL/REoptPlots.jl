@@ -105,14 +105,14 @@ function plot_electric_dispatch(dict)
 
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
-    
+
     for key in keys
         if haskey(dict, key)
             sub_dict = get(dict, key, nothing)
             for name in names
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
-
+                    
                     # Define an empty array to store the data arrays                    
                     #invisible line for stacking
                     push!(traces, PlotlyJS.scatter(
@@ -135,10 +135,8 @@ function plot_electric_dispatch(dict)
                         name = key,
                         x = dr_v,
                         y = total_array,
-                        fill = "tonexty",
-                        line = PlotlyJS.attr(
-                            width = 0),
-                      ))
+                        fill = "tonexty")
+                      )
                 end
             end
         end
