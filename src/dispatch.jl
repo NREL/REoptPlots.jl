@@ -132,7 +132,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                         y = total_array,
                         mode = "lines",
                         fill = "tonexty",
-                        line=attr(width=0),
+                        line=attr(width=0, color = color_list[current_color_index]),
                         ))
                         
                     current_color_index += 1
