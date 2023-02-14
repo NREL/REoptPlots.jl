@@ -49,10 +49,10 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     #Define year
     year = 2017
-    
+    next_year = year+1
     # Define the start and end time for the date and time array
     start_time  = DateTime(year, 1, 1, 0, 0, 0)
-    end_time    = DateTime(year+1, 1, 1, 0, 0, 0)
+    end_time    = DateTime(next_year, 1, 1, 0, 0, 0)
 
     # Create the date and time array with the specified time interval
     dr = start_time:check_time_interval(eload):end_time
