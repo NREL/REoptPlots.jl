@@ -100,7 +100,9 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             for a_name in names_list
                 if haskey(sub_dict, a_name)
                     data_array = get(sub_dict, a_name, nothing)
-
+                    if a_key == "ElectricStorage"
+                        data_array = get(sub_dict, names_list[2], nothing)
+                    end
                     # Define an empty array to store the data arrays                    
                     #invisible line for stacking
                     push!(traces, scatter(
