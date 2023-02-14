@@ -247,18 +247,6 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         ))
 
         layout = PlotlyJS.Layout(
-			hovermode="closest",
-        	hoverlabel_align="left",
-			plot_bgcolor="white",
-	        paper_bgcolor="white",
-		    font_size=18,
-       		xaxis=attr(showline=true, ticks="outside", showgrid=false,
-                   linewidth=1.5, zeroline=false),
-        	yaxis=attr(showline=true, ticks="outside", showgrid=false,
-                   linewidth=1.5, zeroline=false),
-            xaxis_title = "",
-            yaxis_title = "Power (kW)",
-			xaxis_rangeslider_visible=true,
 			legend=attr(x=1.07, y=0.5, 
 						font=attr(
 			            size=14,
