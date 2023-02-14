@@ -99,11 +99,11 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             sub_dict = get(d, a_key, nothing)
             data_array = []
             empty(data_array)
-            
+
             data_array = get(sub_dict, "electric_to_load_series_kw", nothing)
 
             if a_key == "ElectricStorage"
-                data_array = get(sub_dict, names_list[2], nothing)
+                data_array = get(sub_dict,"storage_to_load_series_kw", nothing)
             end
 
             # Define an empty array to store the data arrays                    
@@ -132,7 +132,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                 line=attr(width=0,color = color_list[current_color_index])
                 ))        
             
-                current_color_index = current_color_index + 1
+            current_color_index = current_color_index + 1
         end
     end
 
