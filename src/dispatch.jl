@@ -30,7 +30,11 @@
 function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
 
     # Define an empty array to store data arrays
+    total_array = []
     arrays = []
+    
+    empty!(arrays)
+    empty!(total_array)
 
     # Function to add a new data array to the existing array
     function add_array(new_array)
@@ -70,7 +74,6 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     dr_v = collect(dr)
     pop!(dr_v)
     
-    total_array = []
 
     ### REopt Data Plotting
     ### Electric Load Line Plot
