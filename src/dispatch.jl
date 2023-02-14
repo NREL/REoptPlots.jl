@@ -219,7 +219,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
 
                     #plot each technology
                     push!(traces, PlotlyJS.scatter(
-                        name = key,
+                        name = "$key Serving Load",
                         x = dr_v,
                         y = total_array,
                         fill = "tonexty",
@@ -238,12 +238,12 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     end
 
     ### Battery SOC
-    if "ElectricStorage" in keys(d)
+    if "ElectricStorage" in keys(dict)
         ### Battery SOC line plot
         push!(traces, PlotlyJS.scatter(
             name = "Battery State of Charge",
             x = dr_v,
-            y = d["ElectricStorage"]["soc_series_fraction"]*100,
+            y = dict["ElectricStorage"]["soc_series_fraction"]*100,
             yaxis="y2",
             line = PlotlyJS.attr(
             dash= "dashdot",
