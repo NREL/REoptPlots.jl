@@ -229,7 +229,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
             end
         end
     end
-
+    
     p = PlotlyJS.plot(traces, layout)
 
     if save_html
