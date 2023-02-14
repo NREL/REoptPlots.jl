@@ -75,7 +75,7 @@ function plot_electric_dispatch(dict)
     
     total_array = []
     ### REopt Data Plotting
-    eload = d["ElectricLoad"]["load_series_kw"]
+    eload = dict["ElectricLoad"]["load_series_kw"]
 
     ### Electric Load Line Plot
     push!(traces, PlotlyJS.scatter(
