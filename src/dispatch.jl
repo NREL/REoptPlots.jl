@@ -36,6 +36,10 @@ function plot_electric_dispatch(dict)
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)   
     traces = PlotlyJS.GenericTrace[]
+    layout = PlotlyJS.Layout(
+        title_text = title,
+        yaxis_title_text = "Power (kW)",
+        )
 
     for key in keys
         if haskey(dict, key)
