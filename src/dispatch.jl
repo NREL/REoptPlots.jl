@@ -27,7 +27,7 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
 
     # Define an empty array to store data arrays
     arrays = []
@@ -77,7 +77,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     push!(traces, PlotlyJS.scatter(
         name = "Total Electric Load",
         x = dr_v,
-        y = dict["ElectricLoad"]["load_series_kw"],
+        y = d["ElectricLoad"]["load_series_kw"],
         fill = "none",
         line = PlotlyJS.attr(
             width = 1,
@@ -91,7 +91,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     push!(traces, PlotlyJS.scatter(
         name = "Grid Serving Load",
         x = dr_v,
-        y = dict["ElectricUtility"]["electric_to_load_series_kw"],
+        y = d["ElectricUtility"]["electric_to_load_series_kw"],
         fill = "tozeroy",
         marker = PlotlyJS.attr(
             color="#0000ff",
@@ -101,15 +101,15 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         ),
     ))
 
-    add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
+    add_array(d["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
     
     # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     # current_color_index = 1
 
-    for key in key_names
-        if haskey(dict, key)
-            sub_dict = get(dict, key, nothing)
+    for a_key in key_names
+        if haskey(d, a_key)
+            sub_dict = get(d, a_key, nothing)
             for name in names
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
@@ -133,7 +133,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
 
                     #plot each technology
                     push!(traces, PlotlyJS.scatter(
-                        name = key,
+                        name = a_key,
                         x = dr_v,
                         y = total_array,
                         fill = "tonexty",
