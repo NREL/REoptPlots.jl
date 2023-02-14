@@ -65,8 +65,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         end
     end
     
-    key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
-    names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
+    key_list = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+    names_list = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     
     traces = GenericTrace[]
 
@@ -99,12 +99,12 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     add_array(d["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
     
-    for a_key in key_names
+    for a_key in key_list
         if haskey(d, a_key)
             sub_dict = get(d, a_key, nothing)
-            for name in names
-                if haskey(sub_dict, name)
-                    data_array = get(sub_dict, name, nothing)
+            for a_name in names_list
+                if haskey(sub_dict, a_name)
+                    data_array = get(sub_dict, a_name, nothing)
 
                     # Define an empty array to store the data arrays                    
                     #invisible line for stacking
