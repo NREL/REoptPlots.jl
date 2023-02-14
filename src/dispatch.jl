@@ -75,7 +75,7 @@ end
 arrays = []
 
 function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
-    keys = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+    key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)   
@@ -230,14 +230,14 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
             
         )
     end
-    
+
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
 
     color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     current_color_index = 1
 
-    for key in keys
+    for key in key_names
         if haskey(dict, key)
             sub_dict = get(dict, key, nothing)
             for name in names
