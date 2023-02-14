@@ -62,7 +62,7 @@ function create_total_array()
 end
 
 function plot_electric_dispatch(dict)
-    keys = ["ElectricUtility","PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+    keys = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)   
@@ -90,50 +90,53 @@ function plot_electric_dispatch(dict)
         )
     ))
 
+    push!(traces, PlotlyJS.scatter(
+        name = "Grid Serving Load",
+        x = dr_v,
+        y = dict["ElectricUtility"]["electric_to_load_series_kw"],
+        fill = "tozeroy",
+        marker = PlotlyJS.attr(
+            color="#0000ff",
+        ),
+        line = PlotlyJS.attr(
+            width = 0
+        ),
+    ))
+
+    add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
+    total_array = create_total_array()
+
     for key in keys
         if haskey(dict, key)
             sub_dict = get(dict, key, nothing)
             for name in names
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
+
                     # Define an empty array to store the data arrays                    
                     #invisible line for stacking
-                    # push!(traces, PlotlyJS.scatter(
-                    #     name = "invisible",
-                    #     x = dr_v,
-                    #     y = total_array,
-                    #     fill = Nothing,
-                    #     line = PlotlyJS.attr(
-                    #         width = 0
-                    #     ),
-                    #     showlegend = false,
-                    #     hoverinfo = "skip",
-                    # ))
-                    
-                    # add_array(data_array)
-                    # total_array = create_total_array()
+                    push!(traces, PlotlyJS.scatter(
+                        name = "invisible",
+                        x = dr_v,
+                        y = total_array,
+                        fill = Nothing,
+                        line = PlotlyJS.attr(
+                            width = 0
+                        ),
+                        showlegend = false,
+                        hoverinfo = "skip",
+                    ))
+
+                    add_array(data_array)
+                    total_array = create_total_array()
 
                     #plot each technology
                     push!(traces, PlotlyJS.scatter(
                         name = key,
                         x = dr_v,
-                        y = data_array,
+                        y = total_array,
                         fill = "tonexty")
                       )
-
-                    # # Define an empty array to store the data arrays                    
-                    # #invisible line for stacking
-                    # push!(traces, PlotlyJS.scatter(
-                    #     name = "invisible",
-                    #     x = dr_v,
-                    #     y = total_array,
-                    #     fill = Nothing,
-                    #     line = PlotlyJS.attr(
-                    #         width = 0
-                    #     ),
-                    #     showlegend = false,
-                    #     hoverinfo = "skip",
-                    # ))
                 end
             end
         end
