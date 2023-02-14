@@ -55,7 +55,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     end_time    = DateTime(year+1, 1, 1, 0, 0, 0)
 
     # Create the date and time array with the specified time interval
-    dr_v = collect(start_time:check_time_interval(eload):end_time) 
+    dr = start_time:check_time_interval(eload):end_time
+    dr_v = collect(dr)
     
     ### REopt Data Plotting
     ### Total Electric Load Line Plot
