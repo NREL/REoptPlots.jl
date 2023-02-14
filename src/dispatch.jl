@@ -99,8 +99,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     add_array(d["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
     
-    # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
-    # current_color_index = 1
+    color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
+    current_color_index = 1
 
     for a_key in key_names
         if haskey(d, a_key)
@@ -135,7 +135,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                         line=attr(width=0),
                         ))
                         
-                    # current_color_index += 1
+                    current_color_index += 1
                     
                 end
             end
