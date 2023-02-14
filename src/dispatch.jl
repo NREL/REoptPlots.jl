@@ -137,9 +137,6 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                         x = dr_v,
                         y = total_array,
                         fill = "tonexty",
-                        # marker = PlotlyJS.attr(
-                        #     color=color_list[current_color_index],
-                        # ),
                         line = PlotlyJS.attr(
                             width = 0,),
                         ))
