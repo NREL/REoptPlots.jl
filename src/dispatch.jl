@@ -29,10 +29,7 @@
 # *********************************************************************************
 function plot_electric_dispatch(d::Dict{Any, Any}; title="Electric Systems Dispatch", save_html=true)
     
-
     tech_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
-
-    all_data = Vector{Dict{String, Vector{Float64}}}(undef, length(dict_names)) 
 
     traces = GenericTrace[]
 
@@ -40,9 +37,8 @@ function plot_electric_dispatch(d::Dict{Any, Any}; title="Electric Systems Dispa
     dr_v = collect(dr)
     pop!(dr_v)
     
-
     ### REopt Data Plotting
-    ### Electric Load Line Plot
+    ### Total Electric Load Line Plot
     push!(traces, scatter(;
         name = "Total Electric Load",
         x = dr_v,
@@ -52,44 +48,45 @@ function plot_electric_dispatch(d::Dict{Any, Any}; title="Electric Systems Dispa
         line=attr(width=1, color="#003f5c")
     ))
 
-    ### Grid to Load Fill-In
+    ### Grid to Load Plot
     push!(traces, scatter(;
         name = "Grid Serving Load",
         x = dr_v,
         y = d["ElectricUtility"]["electric_to_load_series_kw"],
-        mode="lines",
+        mode = "lines",
         fill = "tozeroy",
-        line=attr(width=0, color="#0000ff")
+        line = attr(width=0, color="#0000ff")
     ))
-
 
     # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     # current_color_index = 1   
-    cumulative_data = zeros(0)
-    cumulative_data = [cumulative_data; d["ElectricUtility"]["electric_to_load_series_kw"]]
+
+    #Plot every existing technology
+    cumulative_data = zeros(length(dr_v))
+    cumulative_data = cumulative_data .+ d["ElectricUtility"]["electric_to_load_series_kw"]
 
     for tech in tech_names
-        if haskey(nested_dict, tech)
-            sub_dict = nested_dict[tech]
+        if haskey(d, tech)
+            sub_dict = d[tech]
             if tech == "ElectricStorage"
-                data = sub_dict["storage_to_load_series_kw"]
+                new_data = sub_dict["storage_to_load_series_kw"]
             else
-                data = sub_dict["electric_to_load_series_kw"]
+                new_data = sub_dict["electric_to_load_series_kw"]
             end
             
             #invisble line for plotting
             push!(traces, scatter(
-            name = "invisible",			
-            x = dr_v,
-			y = cumulative_data,
-            mode = "lines",
-            fill = Nothing,
-            line = attr(width = 0),
-            showlegend = false,
-            hoverinfo = "skip",
+                name = "invisible",			
+                x = dr_v,
+                y = cumulative_data,
+                mode = "lines",
+                fill = Nothing,
+                line = attr(width = 0),
+                showlegend = false,
+                hoverinfo = "skip",
             )) 
 
-            cumulative_data = [cumulative_data; data]
+            cumulative_data = cumulative_data .+ new_data
             
             #plot each technology
             push!(traces, scatter(;
@@ -99,7 +96,7 @@ function plot_electric_dispatch(d::Dict{Any, Any}; title="Electric Systems Dispa
                 mode = "lines",
                 fill = "tonexty",
                 line = attr(width=0)
-                ))        
+            ))        
             
         end
     end
