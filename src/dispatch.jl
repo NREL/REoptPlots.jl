@@ -27,11 +27,10 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-
 function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false)
     
     traces = GenericTrace[]
-    layout = PlotlyJS.Layout(
+    layout = Layout(
         hovermode="closest",
         hoverlabel_align="left",
         plot_bgcolor="white",
@@ -153,16 +152,16 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                 new_data = sub_dict["storage_to_load_series_kw"]
 
                 ### Battery SOC line plot
-                push!(traces, PlotlyJS.scatter(
+                push!(traces, scatter(
                     name = "Battery State of Charge",
                     x = dr_v,
                     y = d["ElectricStorage"]["soc_series_fraction"]*100,
                     yaxis="y2",
-                    line = PlotlyJS.attr(
+                    line = attr(
                     dash= "dashdot",
                     width = 1
                     ),
-                    marker = PlotlyJS.attr(
+                    marker = attr(
                         color="rgb(100,100,100)"
                     ),
                 ))
@@ -185,7 +184,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                                 size=14,
                                 color="black")
                                 ),
-                    yaxis2 = PlotlyJS.attr(
+                    yaxis2 = attr(
                         title = "State of Charge (Percent)",
                         overlaying = "y",
                         side = "right"
