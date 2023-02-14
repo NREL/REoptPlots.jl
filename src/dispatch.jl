@@ -60,6 +60,21 @@ function create_total_array()
     end
 end
 
+function rec_flatten_dict(d, prefix_delim = ".")
+    new_d = empty(d)
+    for (key, value) in pairs(d)
+        if isa(value, Dict)
+             flattened_value = rec_flatten_dict(value, prefix_delim)
+             for (ikey, ivalue) in pairs(flattened_value)
+                 new_d["$key.$ikey"] = ivalue
+             end
+        else
+            new_d[key] = value
+        end
+    end
+    return new_d
+end
+
 function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
     key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
@@ -69,6 +84,60 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         title_text = title,
         yaxis_title_text = "Power (kW)",
         )
+
+    ###Plot Stats
+    df_stat = rec_flatten_dict(dict)
+	load  = get(df_stat,"ElectricLoad.load_series_kw","-")
+	avg_val = round(mean(load))
+	max_val = round(maximum(load))
+	min_val = round(minimum(load))
+
+    x_stat = [first(dr_v),dr_v[end-100]]
+	y_stat1 = [min_val,min_val]
+	y_stat2 = [max_val,max_val]
+	y_stat3 = [avg_val,avg_val]
+    
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat1,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot",),
+	mode="lines+text",
+    name=String("Min = $(min_val) kW"),
+    text=[String("Min = $(min_val) kW")],
+    textposition="top right",
+		)
+	)
+
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat2,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot",),
+	mode="lines+text",
+    name=String("Max = $(max_val) kW"),
+    text=[String("Max = $(max_val) kW")],
+    textposition="top right",
+		)
+	)
+
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat3,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot",),
+	mode="lines+text",
+    name=String("Avg = $(avg_val) kW"),
+    text=[String("Avg = $(avg_val) kW")],
+    textposition="top right",
+		)
+	)
 
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)
