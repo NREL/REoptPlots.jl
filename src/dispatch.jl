@@ -104,8 +104,8 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
     
-    color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
-    current_color_index = 1
+    # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
+    # current_color_index = 1
 
     for key in key_names
         if haskey(dict, key)
@@ -137,14 +137,14 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
                         x = dr_v,
                         y = total_array,
                         fill = "tonexty",
-                        marker = PlotlyJS.attr(
-                            color=color_list[current_color_index],
-                        ),
+                        # marker = PlotlyJS.attr(
+                        #     color=color_list[current_color_index],
+                        # ),
                         line = PlotlyJS.attr(
                             width = 0,),
                         ))
                         
-                    current_color_index += 1
+                    # current_color_index += 1
                     
                 end
             end
