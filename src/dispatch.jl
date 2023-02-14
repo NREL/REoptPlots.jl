@@ -27,7 +27,7 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function plot_electric_dispatch(d::Dict{Any, Any}; title="Electric Systems Dispatch", save_html=true)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
     
     tech_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
 
