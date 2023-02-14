@@ -50,32 +50,34 @@ function plot_electric_dispatch(dict)
             for name in names
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
-                    # invisible line for stacking 
+                    
                     push!(result_array, data_array)
+                    println(key)
+                    println(name)
+                    println(result_array)
+                    # total_array = result_array[1]
+                    # for array in result_array[2:end]
+                    #     total_array .+= array
+                    # end
 
-                    total_array = result_array[1]
-                    for array in result_array[2:end]
-                        total_array .+= array
-                    end
-
-                    push!(traces, PlotlyJS.scatter(
-                        name = "invisible",
-                        x = dr_v,
-                        y_sum = total_array,
-                        fill = Nothing,
-                        line = PlotlyJS.attr(
-                            width = 0
-                        ),
-                        showlegend = false,
-                        hoverinfo = "skip",
-                    ))
-                    #plot each technology
-                    push!(traces, PlotlyJS.scatter(
-                        name = key,
-                        x = dr_v,
-                        y = data_array,
-                        fill = "tonexty")
-                    )
+                    # push!(traces, PlotlyJS.scatter(
+                    #     name = "invisible",
+                    #     x = dr_v,
+                    #     y_sum = total_array,
+                    #     fill = Nothing,
+                    #     line = PlotlyJS.attr(
+                    #         width = 0
+                    #     ),
+                    #     showlegend = false,
+                    #     hoverinfo = "skip",
+                    # ))
+                    # #plot each technology
+                    # push!(traces, PlotlyJS.scatter(
+                    #     name = key,
+                    #     x = dr_v,
+                    #     y = data_array,
+                    #     fill = "tonexty")
+                    # )
                 end
             end
         end
