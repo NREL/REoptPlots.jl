@@ -68,7 +68,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     
-    traces = PlotlyJS.GenericTrace[]
+    traces = GenericTrace[]
 
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)
@@ -77,7 +77,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     ### REopt Data Plotting
     ### Electric Load Line Plot
-    push!(traces, PlotlyJS.scatter(
+    push!(traces, scatter(
         name = "Total Electric Load",
         x = dr_v,
         y = d["ElectricLoad"]["load_series_kw"],
@@ -87,7 +87,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     ))
 
     ### Grid to Load Fill-In
-    push!(traces, PlotlyJS.scatter(
+    push!(traces, scatter(
         name = "Grid Serving Load",
         x = dr_v,
         y = d["ElectricUtility"]["electric_to_load_series_kw"],
@@ -111,7 +111,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
                     # Define an empty array to store the data arrays                    
                     #invisible line for stacking
-                    push!(traces, PlotlyJS.scatter(
+                    push!(traces, scatter(
                         name = "invisible",
                         x = dr_v,
                         y = total_array,
@@ -126,7 +126,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                     total_array = create_total_array()
 
                     #plot each technology
-                    push!(traces, PlotlyJS.scatter(
+                    push!(traces, scatter(
                         name = a_key,
                         x = dr_v,
                         y = total_array,
@@ -142,31 +142,26 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         end
     end
 
-    # layout = PlotlyJS.Layout(
-    #     hovermode="closest",
-    #     hoverlabel_align="left",
-    #     plot_bgcolor="white",
-    #     paper_bgcolor="white",
-    #     font_size=18,
-    #        xaxis=attr(showline=true, ticks="outside", showgrid=false,
-    #            linewidth=1.5, zeroline=false,),
-    #     yaxis=attr(showline=true, ticks="outside", showgrid=true,
-    #            linewidth=1.5, zeroline=false, color="black",),
-    #     title = title,
-    #     xaxis_title = "",
-    #     yaxis_title = "Power (kW)",
-    #     xaxis_rangeslider_visible=true,
-    #     legend=attr(x=1.07, y=0.5, 
-    #                 font=attr(
-    #                 size=14,
-    #                 color="black",),
-    #                 ),)
+    layout = PlotlyJS.Layout(
+        hovermode="closest",
+        hoverlabel_align="left",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font_size=18,
+        xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
+        yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
+        title = title,
+        xaxis_title = "",
+        yaxis_title = "Power (kW)",
+        xaxis_rangeslider_visible=true,
+        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black"))
+        )
 
-    p = PlotlyJS.plot(traces, layout)
+    p = plot(traces, layout)
 
     if save_html
-        PlotlyJS.savefig(p, replace(title, " " => "_") * ".html")
+        savefig(p, replace(title, " " => "_") * ".html")
     end
 
-    PlotlyJS.plot(traces, layout)  # will not produce plot in a loop
+    plot(traces, layout)  # will not produce plot in a loop
 end
