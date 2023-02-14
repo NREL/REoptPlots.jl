@@ -28,9 +28,9 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
 function check_time_interval(arr::Array)
-    if length(arr) < 10000
+    if length(arr) > 35000
         interval = Dates.Minute(15)
-    elseif length(arr) < 100000
+    elseif length(arr) > 17000
         interval = Dates.Minute(30)
     else
         interval = Dates.Hour(1)
