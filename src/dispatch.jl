@@ -90,7 +90,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             
             #plot each technology
             push!(traces, scatter(;
-                name = a_key,
+                name = tech,
                 x = dr_v,
                 y = cumulative_data,
                 mode = "lines",
