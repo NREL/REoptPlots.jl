@@ -103,59 +103,59 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
 						)
 	)
 
-    ###Plot Stats
-    df_stat = rec_flatten_dict(dict)
-	load  = get(df_stat,"ElectricLoad.load_series_kw","-")
-	avg_val = round(mean(load))
-	max_val = round(maximum(load))
-	min_val = round(minimum(load))
+    # ###Plot Stats
+    # df_stat = rec_flatten_dict(dict)
+	# load  = get(df_stat,"ElectricLoad.load_series_kw","-")
+	# avg_val = round(mean(load))
+	# max_val = round(maximum(load))
+	# min_val = round(minimum(load))
 
-    x_stat = [first(dr_v),last(dr_v)]
-	y_stat1 = [min_val,min_val]
-	y_stat2 = [max_val,max_val]
-	y_stat3 = [avg_val,avg_val]
+    # x_stat = [first(dr_v),last(dr_v)]
+	# y_stat1 = [min_val,min_val]
+	# y_stat2 = [max_val,max_val]
+	# y_stat3 = [avg_val,avg_val]
     
-	push!(traces, PlotlyJS.scatter(
-	x = x_stat,
-	y = y_stat1,
-	showlegend = false,
-	legendgroup="group2",
-	line=attr(color="grey", width=0.5,
-                              dash="dot"),
-	mode="lines+text",
-    name=String("Min = $(min_val) kW"),
-    text=[String("Min = $(min_val) kW")],
-    textposition="top right"
-		)
-	)
+	# push!(traces, PlotlyJS.scatter(
+	# x = x_stat,
+	# y = y_stat1,
+	# showlegend = false,
+	# legendgroup="group2",
+	# line=attr(color="grey", width=0.5,
+    #                           dash="dot"),
+	# mode="lines+text",
+    # name=String("Min = $(min_val) kW"),
+    # text=[String("Min = $(min_val) kW")],
+    # textposition="top right"
+	# 	)
+	# )
 
-	push!(traces, PlotlyJS.scatter(
-	x = x_stat,
-	y = y_stat2,
-	showlegend = false,
-	legendgroup="group2",
-	line=attr(color="grey", width=0.5,
-                              dash="dot"),
-	mode="lines+text",
-    name=String("Max = $(max_val) kW"),
-    text=[String("Max = $(max_val) kW")],
-    textposition="top right"
-		)
-	)
+	# push!(traces, PlotlyJS.scatter(
+	# x = x_stat,
+	# y = y_stat2,
+	# showlegend = false,
+	# legendgroup="group2",
+	# line=attr(color="grey", width=0.5,
+    #                           dash="dot"),
+	# mode="lines+text",
+    # name=String("Max = $(max_val) kW"),
+    # text=[String("Max = $(max_val) kW")],
+    # textposition="top right"
+	# 	)
+	# )
 
-	push!(traces, PlotlyJS.scatter(
-	x = x_stat,
-	y = y_stat3,
-	showlegend = false,
-	legendgroup="group2",
-	line=attr(color="grey", width=0.5,
-                              dash="dot"),
-	mode="lines+text",
-    name=String("Avg = $(avg_val) kW"),
-    text=[String("Avg = $(avg_val) kW")],
-    textposition="top right"
-		)
-	)
+	# push!(traces, PlotlyJS.scatter(
+	# x = x_stat,
+	# y = y_stat3,
+	# showlegend = false,
+	# legendgroup="group2",
+	# line=attr(color="grey", width=0.5,
+    #                           dash="dot"),
+	# mode="lines+text",
+    # name=String("Avg = $(avg_val) kW"),
+    # text=[String("Avg = $(avg_val) kW")],
+    # textposition="top right"
+	# 	)
+	# )
 	
     total_array = []
 
@@ -187,49 +187,49 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         ),
     ))
 
-    ### Battery SOC
-    if "ElectricStorage" in keys(dict)
-        ### Battery SOC line plot
-        push!(traces, PlotlyJS.scatter(
-            name = "Battery State of Charge",
-            x = dr_v,
-            y = dict["ElectricStorage"]["soc_series_fraction"]*100,
-            yaxis="y2",
-            line = PlotlyJS.attr(
-            dash= "dashdot",
-            width = 1
-            ),
-            marker = PlotlyJS.attr(
-                color="rgb(100,100,100)"
-            ),
-        ))
+    # ### Battery SOC
+    # if "ElectricStorage" in keys(dict)
+    #     ### Battery SOC line plot
+    #     push!(traces, PlotlyJS.scatter(
+    #         name = "Battery State of Charge",
+    #         x = dr_v,
+    #         y = dict["ElectricStorage"]["soc_series_fraction"]*100,
+    #         yaxis="y2",
+    #         line = PlotlyJS.attr(
+    #         dash= "dashdot",
+    #         width = 1
+    #         ),
+    #         marker = PlotlyJS.attr(
+    #             color="rgb(100,100,100)"
+    #         ),
+    #     ))
 
-        layout = PlotlyJS.Layout(
-            hovermode="closest",
-            hoverlabel_align="left",
-            plot_bgcolor="white",
-            paper_bgcolor="white",
-            font_size=18,
-                xaxis=attr(showline=true, ticks="outside", showgrid=false,
-                    linewidth=1.5, zeroline=false),
-            yaxis=attr(showline=true, ticks="outside", showgrid=false,
-                    linewidth=1.5, zeroline=false),
-            xaxis_title = "",
-            yaxis_title = "Power (kW)",
-            xaxis_rangeslider_visible=true,
-            legend=attr(x=1.07, y=0.5, 
-                        font=attr(
-                        size=14,
-                        color="black")
-                        ),
-            yaxis2 = PlotlyJS.attr(
-                title = "State of Charge (Percent)",
-                overlaying = "y",
-                side = "right"
-            )
+    #     layout = PlotlyJS.Layout(
+    #         hovermode="closest",
+    #         hoverlabel_align="left",
+    #         plot_bgcolor="white",
+    #         paper_bgcolor="white",
+    #         font_size=18,
+    #             xaxis=attr(showline=true, ticks="outside", showgrid=false,
+    #                 linewidth=1.5, zeroline=false),
+    #         yaxis=attr(showline=true, ticks="outside", showgrid=false,
+    #                 linewidth=1.5, zeroline=false),
+    #         xaxis_title = "",
+    #         yaxis_title = "Power (kW)",
+    #         xaxis_rangeslider_visible=true,
+    #         legend=attr(x=1.07, y=0.5, 
+    #                     font=attr(
+    #                     size=14,
+    #                     color="black")
+    #                     ),
+    #         yaxis2 = PlotlyJS.attr(
+    #             title = "State of Charge (Percent)",
+    #             overlaying = "y",
+    #             side = "right"
+    #         )
             
-        )
-    end
+    #     )
+    # end
 
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
