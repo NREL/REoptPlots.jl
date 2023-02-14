@@ -246,18 +246,6 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
             ),
         ))
 
-        layout = PlotlyJS.Layout(
-			legend=attr(x=1.07, y=0.5, 
-						font=attr(
-			            size=14,
-			            color="black",),
-						),
-            yaxis2 = PlotlyJS.attr(
-                title = "State of Charge (Percent)",
-                overlaying = "y",
-                side = "right",
-            ),
-        )
     end
 
     p = PlotlyJS.plot(traces, layout)
