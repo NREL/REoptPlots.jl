@@ -27,11 +27,6 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-
-####BASE###
-# Define an empty array to store data arrays
-arrays = []
-
 # Function to add a new data array to the existing array
 function add_array(new_array)
     # Check if the new array is a 1-d array
@@ -61,7 +56,10 @@ function create_total_array()
     end
 end
 
-function plot_electric_dispatch(dict)
+# Define an empty array to store data arrays
+arrays = []
+
+function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
     keys = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
@@ -141,7 +139,13 @@ function plot_electric_dispatch(dict)
             end
         end
     end
-p = PlotlyJS.plot(traces, layout)
+    p = PlotlyJS.plot(traces, layout)
+
+    if save_html
+        PlotlyJS.savefig(p, replace(title, " " => "_") * ".html")
+    end
+
+    PlotlyJS.plot(traces, layout)  # will not produce plot in a loop
 end
 
 
