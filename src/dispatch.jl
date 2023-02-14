@@ -133,19 +133,23 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         end
     end
 
+    # layout = Layout(
+    #     hovermode="closest",
+    #     hoverlabel_align="left",
+    #     plot_bgcolor="white",
+    #     paper_bgcolor="white",
+    #     font_size=18,
+    #     xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
+    #     yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
+    #     title = title,
+    #     xaxis_title = "",
+    #     yaxis_title = "Power (kW)",
+    #     xaxis_rangeslider_visible=true,
+    #     legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
     layout = Layout(
-        hovermode="closest",
-        hoverlabel_align="left",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font_size=18,
-        xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
-        yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
-        title = title,
-        xaxis_title = "",
-        yaxis_title = "Power (kW)",
-        xaxis_rangeslider_visible=true,
-        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
+        title_text = title,
+        yaxis_title_text = "Power (kW)",
+        )
 
     p = plot(traces, layout)
 
