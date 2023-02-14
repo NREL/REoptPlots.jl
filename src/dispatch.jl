@@ -37,7 +37,7 @@ function plot_electric_dispatch(dict)
     dr_v = collect(dr)   
     traces = PlotlyJS.GenericTrace[]
     layout = PlotlyJS.Layout(
-        title_text = title,
+        title_text = "Electric Systems Dispatch",
         yaxis_title_text = "Power (kW)",
         )
 
