@@ -27,38 +27,13 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
-
-    # Define an empty array to store data arrays
-    total_array = Float64[]
-    arrays_list = Float64[]
-
-    empty!(total_array)
-    empty!(arrays_list)
-
-
-    # Function to add a new data array to the existing array
-    function add_array(new_array)
-        # Check if the length of the new array matches with existing arrays
-        if length(arrays_list) > 0 && length(new_array) != length(arrays_list[1])
-            println("Error: Length of new array does not match existing arrays")
-        else
-            # Add the new array to the existing array
-            push!(arrays_list, new_array)
-        end
-    end
-
-    # Function to create a total array
-    function create_total_array()
-        for i in eachindex(arrays_list)
-            total_array = total_array .+ arrays_list[i]
-        end
-        return total_array
-    end
+function plot_electric_dispatch(d::Dict{Any, Any}; title="Electric Systems Dispatch", save_html=true)
     
-    key_list = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
-    #  = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
-    
+
+    tech_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+
+    all_data = Vector{Dict{String, Vector{Float64}}}(undef, length(dict_names)) 
+
     traces = GenericTrace[]
 
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
@@ -87,65 +62,48 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         line=attr(width=0, color="#0000ff")
     ))
 
-    add_array(d["ElectricUtility"]["electric_to_load_series_kw"])
-    total_array = create_total_array()
 
-    color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
-    current_color_index = 1   
+    # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
+    # current_color_index = 1   
+    cumulative_data = zeros(0)
+    cumulative_data = [cumulative_data; d["ElectricUtility"]["electric_to_load_series_kw"]]
 
-    for a_key in key_list
-        if haskey(d, a_key)
-            sub_dict = get(d, a_key, nothing)
-            data_array = []
-            empty(data_array)
-            if a_key == "ElectricStorage"
-                data_array = get(sub_dict,"storage_to_load_series_kw", nothing)
+    for tech in tech_names
+        if haskey(nested_dict, tech)
+            sub_dict = nested_dict[tech]
+            if tech == "ElectricStorage"
+                data = sub_dict["storage_to_load_series_kw"]
             else
-                data_array = get(sub_dict,"electric_to_load_series_kw", nothing)
+                data = sub_dict["electric_to_load_series_kw"]
             end
+            
+            #invisble line for plotting
+            push!(traces, scatter(
+            name = "invisible",			
+            x = dr_v,
+			y = cumulative_data,
+            mode = "lines",
+            fill = Nothing,
+            line = attr(width = 0),
+            showlegend = false,
+            hoverinfo = "skip",
+            )) 
 
-            # Define an empty array to store the data arrays                    
-            #invisible line for stacking
-            push!(traces, scatter(;
-                name = "invisible",
-                x = dr_v,
-                y = total_array,
-                fill = Nothing,
-                line=attr(width=0),
-                showlegend = false,
-                hoverinfo = "skip"
-            ))
-
-            add_array(data_array)
-            total_array = create_total_array()
-
+            cumulative_data = [cumulative_data; data]
+            
             #plot each technology
             push!(traces, scatter(;
                 name = a_key,
                 x = dr_v,
-                y = total_array,
+                y = cumulative_data,
                 mode = "lines",
                 fill = "tonexty",
-                line=attr(width=0,color = color_list[current_color_index])
+                line = attr(width=0)
                 ))        
             
-            current_color_index = current_color_index + 1
         end
     end
-
-    # layout = Layout(
-    #     hovermode="closest",
-    #     hoverlabel_align="left",
-    #     plot_bgcolor="white",
-    #     paper_bgcolor="white",
-    #     font_size=18,
-    #     xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
-    #     yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
-    #     title = title,
-    #     xaxis_title = "",
-    #     yaxis_title = "Power (kW)",
-    #     xaxis_rangeslider_visible=true,
-    #     legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
+    
     layout = Layout(
         title_text = title,
         yaxis_title_text = "Power (kW)",
