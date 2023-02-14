@@ -52,15 +52,16 @@ function plot_electric_dispatch(dict)
                     data_array = get(sub_dict, name, nothing)
                     # invisible line for stacking 
                     push!(result_array, data_array)
-                    result = zeros(length(data_array))
-                    for (i, element) in enumerate(result_array)
-                        result[i % length(data_array)] += element
+
+                    total_array = result_array[1]
+                    for array in result_array[2:end]
+                        total_array .+= array
                     end
 
                     push!(traces, PlotlyJS.scatter(
                         name = "invisible",
                         x = dr_v,
-                        y_sum = result,
+                        y_sum = total_array,
                         fill = Nothing,
                         line = PlotlyJS.attr(
                             width = 0
