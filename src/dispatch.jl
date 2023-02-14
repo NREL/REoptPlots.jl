@@ -27,29 +27,39 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
+function check_time_interval(arr::Array)
+        if length(arr) == 8760
+            interval = Dates.Hour(1)
+        elseif length(arr) == 17520
+            interval = Dates.Minute(30)
+        elseif length(arr) == 35040
+            interval = Dates.Minute(15)
+        else
+            error("Array length must be either 8760, 17520, or 35040")
+        end
+        return interval
+    end
+
 function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
     
     tech_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
 
     traces = GenericTrace[]
-    
+
+    eload = d["ElectricLoad"]["load_series_kw"]
+
     #Define year
     year = 2017
-    next_year = year+1
+
     # Define the start and end time for the date and time array
     start_time  = DateTime(year, 1, 1, 0, 0, 0)
-    end_time    = DateTime(next_year, 1, 1, 0, 0, 0)
-
-    if length(arr) == 8760
-        dr = start_time:Dates.Hour(1):end_time
-    elseif length(arr) == 17520
-        dr = start_time:Dates.Minute(30):end_time
-    elseif length(arr) == 35040
-        dr = start_time:Dates.Minute(15):end_time
-    end
+    end_time    = DateTime(year+1, 1, 1, 0, 0, 0)
 
     # Create the date and time array with the specified time interval
+    dr = start_time:check_time_interval(eload):end_time
     dr_v = collect(dr)
+    pop!(dr_v) #remove the last value of the array to match array sizes
+
     
     ### REopt Data Plotting
     ### Total Electric Load Line Plot
