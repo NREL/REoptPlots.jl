@@ -75,87 +75,70 @@ end
 arrays = []
 
 function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
-    key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+    keys = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)   
 
     traces = PlotlyJS.GenericTrace[]
-
     layout = PlotlyJS.Layout(
-		    hovermode="closest",
-        	hoverlabel_align="left",
-			plot_bgcolor="white",
-	        paper_bgcolor="white",
-		    font_size=18,
-       		xaxis=attr(showline=true, ticks="outside", showgrid=false,
-                   linewidth=1.5, zeroline=false),
-        	yaxis=attr(showline=true, ticks="outside", showgrid=true,
-                   linewidth=1.5, zeroline=false, color="black"),
-		    title = title,
-            xaxis_title = "",
-            yaxis_title = "Power (kW)",
-			xaxis_rangeslider_visible=true,
-			legend=attr(x=1.07, y=0.5, 
-						font=attr(
-			            size=14,
-			            color="black")
-						)
+        title_text = "Electric Systems Dispatch",
+        yaxis_title_text = "Power (kW)",
+        )
+
+    ###Plot Stats
+    df_stat = rec_flatten_dict(dict)
+	load  = get(df_stat,"ElectricLoad.load_series_kw","-")
+	avg_val = round(mean(load))
+	max_val = round(maximum(load))
+	min_val = round(minimum(load))
+
+    x_stat = [first(dr_v),last(dr_v)]
+	y_stat1 = [min_val,min_val]
+	y_stat2 = [max_val,max_val]
+	y_stat3 = [avg_val,avg_val]
+    
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat1,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot"),
+	mode="lines+text",
+    name=String("Min = $(min_val) kW"),
+    text=[String("Min = $(min_val) kW")],
+    textposition="top right"
+		)
 	)
 
-    # ###Plot Stats
-    # df_stat = rec_flatten_dict(dict)
-	# load  = get(df_stat,"ElectricLoad.load_series_kw","-")
-	# avg_val = round(mean(load))
-	# max_val = round(maximum(load))
-	# min_val = round(minimum(load))
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat2,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot"),
+	mode="lines+text",
+    name=String("Max = $(max_val) kW"),
+    text=[String("Max = $(max_val) kW")],
+    textposition="top right"
+		)
+	)
 
-    # x_stat = [first(dr_v),last(dr_v)]
-	# y_stat1 = [min_val,min_val]
-	# y_stat2 = [max_val,max_val]
-	# y_stat3 = [avg_val,avg_val]
-    
-	# push!(traces, PlotlyJS.scatter(
-	# x = x_stat,
-	# y = y_stat1,
-	# showlegend = false,
-	# legendgroup="group2",
-	# line=attr(color="grey", width=0.5,
-    #                           dash="dot"),
-	# mode="lines+text",
-    # name=String("Min = $(min_val) kW"),
-    # text=[String("Min = $(min_val) kW")],
-    # textposition="top right"
-	# 	)
-	# )
-
-	# push!(traces, PlotlyJS.scatter(
-	# x = x_stat,
-	# y = y_stat2,
-	# showlegend = false,
-	# legendgroup="group2",
-	# line=attr(color="grey", width=0.5,
-    #                           dash="dot"),
-	# mode="lines+text",
-    # name=String("Max = $(max_val) kW"),
-    # text=[String("Max = $(max_val) kW")],
-    # textposition="top right"
-	# 	)
-	# )
-
-	# push!(traces, PlotlyJS.scatter(
-	# x = x_stat,
-	# y = y_stat3,
-	# showlegend = false,
-	# legendgroup="group2",
-	# line=attr(color="grey", width=0.5,
-    #                           dash="dot"),
-	# mode="lines+text",
-    # name=String("Avg = $(avg_val) kW"),
-    # text=[String("Avg = $(avg_val) kW")],
-    # textposition="top right"
-	# 	)
-	# )
+	push!(traces, PlotlyJS.scatter(
+	x = x_stat,
+	y = y_stat3,
+	showlegend = false,
+	legendgroup="group2",
+	line=attr(color="grey", width=0.5,
+                              dash="dot"),
+	mode="lines+text",
+    name=String("Avg = $(avg_val) kW"),
+    text=[String("Avg = $(avg_val) kW")],
+    textposition="top right"
+		)
+	)
 	
     total_array = []
 
@@ -187,57 +170,13 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         ),
     ))
 
-    # ### Battery SOC
-    # if "ElectricStorage" in keys(dict)
-    #     ### Battery SOC line plot
-    #     push!(traces, PlotlyJS.scatter(
-    #         name = "Battery State of Charge",
-    #         x = dr_v,
-    #         y = dict["ElectricStorage"]["soc_series_fraction"]*100,
-    #         yaxis="y2",
-    #         line = PlotlyJS.attr(
-    #         dash= "dashdot",
-    #         width = 1
-    #         ),
-    #         marker = PlotlyJS.attr(
-    #             color="rgb(100,100,100)"
-    #         ),
-    #     ))
-
-    #     layout = PlotlyJS.Layout(
-    #         hovermode="closest",
-    #         hoverlabel_align="left",
-    #         plot_bgcolor="white",
-    #         paper_bgcolor="white",
-    #         font_size=18,
-    #             xaxis=attr(showline=true, ticks="outside", showgrid=false,
-    #                 linewidth=1.5, zeroline=false),
-    #         yaxis=attr(showline=true, ticks="outside", showgrid=false,
-    #                 linewidth=1.5, zeroline=false),
-    #         xaxis_title = "",
-    #         yaxis_title = "Power (kW)",
-    #         xaxis_rangeslider_visible=true,
-    #         legend=attr(x=1.07, y=0.5, 
-    #                     font=attr(
-    #                     size=14,
-    #                     color="black")
-    #                     ),
-    #         yaxis2 = PlotlyJS.attr(
-    #             title = "State of Charge (Percent)",
-    #             overlaying = "y",
-    #             side = "right"
-    #         )
-            
-    #     )
-    # end
-
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
 
     color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     current_color_index = 1
 
-    for key in key_names
+    for key in keys
         if haskey(dict, key)
             sub_dict = get(dict, key, nothing)
             for name in names
@@ -263,7 +202,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
 
                     #plot each technology
                     push!(traces, PlotlyJS.scatter(
-                        name = "$key Serving Load",
+                        name = key,
                         x = dr_v,
                         y = total_array,
                         fill = "tonexty",
@@ -280,7 +219,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
             end
         end
     end
-
+    
     p = PlotlyJS.plot(traces, layout)
 
     if save_html
