@@ -80,10 +80,27 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     
     traces = PlotlyJS.GenericTrace[]
+    
     layout = PlotlyJS.Layout(
-        title_text = title,
-        yaxis_title_text = "Power (kW)",
-        )
+        hovermode="closest",
+        hoverlabel_align="left",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font_size=18,
+           xaxis=attr(showline=true, ticks="outside", showgrid=false,
+               linewidth=1.5, zeroline=false,),
+        yaxis=attr(showline=true, ticks="outside", showgrid=true,
+               linewidth=1.5, zeroline=false, color="black",),
+        title = title,
+        xaxis_title = "",
+        yaxis_title = "Power (kW)",
+        xaxis_rangeslider_visible=true,
+        legend=attr(x=1.07, y=0.5, 
+                    font=attr(
+                    size=14,
+                    color="black",),
+                    ),
+    )
 
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)
@@ -213,26 +230,6 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         end
     end
 
-    layout = PlotlyJS.Layout(
-        hovermode="closest",
-        hoverlabel_align="left",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font_size=18,
-           xaxis=attr(showline=true, ticks="outside", showgrid=false,
-               linewidth=1.5, zeroline=false),
-        yaxis=attr(showline=true, ticks="outside", showgrid=true,
-               linewidth=1.5, zeroline=false, color="black"),
-        title = title,
-        xaxis_title = "",
-        yaxis_title = "Power (kW)",
-        xaxis_rangeslider_visible=true,
-        legend=attr(x=1.07, y=0.5, 
-                    font=attr(
-                    size=14,
-                    color="black"),
-                    ),
-    )
     p = PlotlyJS.plot(traces, layout)
 
     if save_html
