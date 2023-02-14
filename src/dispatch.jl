@@ -35,23 +35,25 @@ function plot_electric_dispatch(dict)
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
     dr_v = collect(dr)   
-    x_values = dr_v
+    traces = PlotlyJS.GenericTrace[]
 
-    data = []
-    
     for key in keys
         if haskey(dict, key)
             sub_dict = get(dict, key, nothing)
             for name in names
                 if haskey(sub_dict, name)
-                    y_values = get(sub_dict, name, nothing)
-                    push!(data, scatter(x=x_values, y=y_values, mode="markers"))
+                    data_array = get(sub_dict, name, nothing)
+                    push!(traces, PlotlyJS.scatter(
+                        x = dr_v,
+                        y = data_array)
+                    )
                 end
             end
         end
     end
-    plot(data)
+p = PlotlyJS.plot(traces, layout)
 end
+
 
 # function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
 
