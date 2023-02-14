@@ -27,40 +27,40 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-
-# Define an empty array to store data arrays
-arrays = []
-
-# Function to add a new data array to the existing array
-function add_array(new_array)
-    # Check if the new array is a 1-d array
-    if ndims(new_array) != 1
-        println("Error: Not a 1-d array")
-    else
-        # Check if the length of the new array matches with existing arrays
-        if length(arrays) > 0 && length(new_array) != length(arrays[1])
-            println("Error: Length of new array does not match existing arrays")
-        else
-            # Add the new array to the existing array
-            push!(arrays, new_array)
-        end
-    end
-end
-
-# Function to create a total array
-function create_total_array()
-    if length(arrays) == 0
-        println("Error: No arrays found")
-    else
-        total_array = similar(arrays[1])
-        for i in 1:length(arrays)
-            total_array = total_array .+ arrays[i]
-        end
-        return total_array
-    end
-end
-
 function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
+
+    # Define an empty array to store data arrays
+    arrays = []
+
+    # Function to add a new data array to the existing array
+    function add_array(new_array)
+        # Check if the new array is a 1-d array
+        if ndims(new_array) != 1
+            println("Error: Not a 1-d array")
+        else
+            # Check if the length of the new array matches with existing arrays
+            if length(arrays) > 0 && length(new_array) != length(arrays[1])
+                println("Error: Length of new array does not match existing arrays")
+            else
+                # Add the new array to the existing array
+                push!(arrays, new_array)
+            end
+        end
+    end
+
+    # Function to create a total array
+    function create_total_array()
+        if length(arrays) == 0
+            println("Error: No arrays found")
+        else
+            total_array = similar(arrays[1])
+            for i in 1:length(arrays)
+                total_array = total_array .+ arrays[i]
+            end
+            return total_array
+        end
+    end
+    
     key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     
