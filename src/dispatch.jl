@@ -29,6 +29,8 @@
 # *********************************************************************************
 
 # Define an empty array to store data arrays
+arrays = []
+
 # Function to add a new data array to the existing array
 function add_array(new_array)
     # Check if the new array is a 1-d array
@@ -79,7 +81,8 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         xaxis_title = "",
         yaxis_title = "Power (kW)",
         xaxis_rangeslider_visible=true,
-        legend=attr(x=1.07, y=0.5, 
+        legend=attr(x=1.07, 
+                    y=0.5, 
                     font=attr(
                     size=14,
                     color="black",),
@@ -91,7 +94,6 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     pop!(dr_v)
     
     total_array = []
-    arrays = []
 
     ### REopt Data Plotting
     ### Electric Load Line Plot
