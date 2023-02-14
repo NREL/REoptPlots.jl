@@ -63,14 +63,16 @@ end
 function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
     key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
-    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
-    dr_v = collect(dr)   
-
+    
     traces = PlotlyJS.GenericTrace[]
     layout = PlotlyJS.Layout(
-        title_text = "Electric Systems Dispatch",
+        title_text = title,
         yaxis_title_text = "Power (kW)",
         )
+
+    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
+    dr_v = collect(dr)
+    pop!(dr_v)
     
     total_array = []
 
@@ -82,7 +84,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         y = dict["ElectricLoad"]["load_series_kw"],
         fill = "none",
         line = PlotlyJS.attr(
-            width = 1
+            width = 1,
         ),
         marker = PlotlyJS.attr(
             color="#003f5c",
@@ -99,7 +101,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
             color="#0000ff",
         ),
         line = PlotlyJS.attr(
-            width = 0
+            width = 0,
         ),
     ))
 
@@ -121,7 +123,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
                         y = total_array,
                         fill = Nothing,
                         line = PlotlyJS.attr(
-                            width = 0
+                            width = 0,
                         ),
                         showlegend = false,
                         hoverinfo = "skip",
