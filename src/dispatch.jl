@@ -33,9 +33,25 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     traces = GenericTrace[]
 
-    dr = DateTime(2017,1,1,0,0,0):Dates.Hour(1):DateTime(2018,1,1,0,0,0)
-    dr_v = collect(dr)
-    pop!(dr_v)
+    eload = d["ElectricLoad"]["load_series_kw"]
+
+    #Define year
+    year = 2017
+    # Define the size of the existing data array
+    data_size = length(eload)
+    
+    # Calculate the time interval based on the data size
+    total_seconds = (data_size - 1) * 10
+    time_interval = Second(total_seconds / data_size) 
+    
+    # Define the start time for the date and time array
+    start_time = DateTime(year, 1, 1, 0, 0, 0)
+    
+    # Define the end time for the date and time array based on the size of the data array and time interval
+    end_time = start_time + (data_size - 1) * time_interval
+    
+    # Create the date and time array with the specified time interval
+    dr_v = collect(start_time:time_interval:end_time) 
     
     ### REopt Data Plotting
     ### Total Electric Load Line Plot
