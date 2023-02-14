@@ -33,6 +33,15 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     total_array = []
     arrays = []
 
+    if length(total_array) != 0
+        empty!(total_array)
+    end
+
+    if length(arrays) != 0
+        empty!(arrays)
+    end
+
+
     # Function to add a new data array to the existing array
     function add_array(new_array)
         # Check if the new array is a 1-d array
