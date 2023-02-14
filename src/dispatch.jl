@@ -81,13 +81,9 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         name = "Total Electric Load",
         x = dr_v,
         y = d["ElectricLoad"]["load_series_kw"],
+        mode = "lines",
         fill = "none",
-        line = PlotlyJS.attr(
-            width = 1,
-        ),
-        marker = PlotlyJS.attr(
-            color="#003f5c",
-        ),
+        line=attr(width=1, color="#003f5c")
     ))
 
     ### Grid to Load Fill-In
@@ -95,13 +91,9 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         name = "Grid Serving Load",
         x = dr_v,
         y = d["ElectricUtility"]["electric_to_load_series_kw"],
+        mode="lines",
         fill = "tozeroy",
-        marker = PlotlyJS.attr(
-            color="#0000ff",
-        ),
-        line = PlotlyJS.attr(
-            width = 0,
-        ),
+        line=attr(width=0, color="#0000ff")
     ))
 
     add_array(d["ElectricUtility"]["electric_to_load_series_kw"])
@@ -110,66 +102,65 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     # current_color_index = 1
 
-    # for a_key in key_names
-    #     if haskey(d, a_key)
-    #         sub_dict = get(d, a_key, nothing)
-    #         for name in names
-    #             if haskey(sub_dict, name)
-    #                 data_array = get(sub_dict, name, nothing)
+    for a_key in key_names
+        if haskey(d, a_key)
+            sub_dict = get(d, a_key, nothing)
+            for name in names
+                if haskey(sub_dict, name)
+                    data_array = get(sub_dict, name, nothing)
 
-    #                 # Define an empty array to store the data arrays                    
-    #                 #invisible line for stacking
-    #                 push!(traces, PlotlyJS.scatter(
-    #                     name = "invisible",
-    #                     x = dr_v,
-    #                     y = total_array,
-    #                     fill = Nothing,
-    #                     line = PlotlyJS.attr(
-    #                         width = 0,
-    #                     ),
-    #                     showlegend = false,
-    #                     hoverinfo = "skip",
-    #                 ))
+                    # Define an empty array to store the data arrays                    
+                    #invisible line for stacking
+                    push!(traces, PlotlyJS.scatter(
+                        name = "invisible",
+                        x = dr_v,
+                        y = total_array,
+                        mode="lines",
+                        fill = Nothing,
+                        line=attr(width=0),
+                        showlegend = false,
+                        hoverinfo = "skip"
+                    ))
 
-    #                 add_array(data_array)
-    #                 total_array = create_total_array()
+                    add_array(data_array)
+                    total_array = create_total_array()
 
-    #                 #plot each technology
-    #                 push!(traces, PlotlyJS.scatter(
-    #                     name = a_key,
-    #                     x = dr_v,
-    #                     y = total_array,
-    #                     fill = "tonexty",
-    #                     line = PlotlyJS.attr(
-    #                         width = 0,),
-    #                     ))
+                    #plot each technology
+                    push!(traces, PlotlyJS.scatter(
+                        name = a_key,
+                        x = dr_v,
+                        y = total_array,
+                        mode = "lines",
+                        fill = "tonexty",
+                        line=attr(width=0),
+                        ))
                         
-    #                 # current_color_index += 1
+                    # current_color_index += 1
                     
-    #             end
-    #         end
-    #     end
-    # end
+                end
+            end
+        end
+    end
 
-    layout = PlotlyJS.Layout(
-        hovermode="closest",
-        hoverlabel_align="left",
-        plot_bgcolor="white",
-        paper_bgcolor="white",
-        font_size=18,
-           xaxis=attr(showline=true, ticks="outside", showgrid=false,
-               linewidth=1.5, zeroline=false,),
-        yaxis=attr(showline=true, ticks="outside", showgrid=true,
-               linewidth=1.5, zeroline=false, color="black",),
-        title = title,
-        xaxis_title = "",
-        yaxis_title = "Power (kW)",
-        xaxis_rangeslider_visible=true,
-        legend=attr(x=1.07, y=0.5, 
-                    font=attr(
-                    size=14,
-                    color="black",),
-                    ),)
+    # layout = PlotlyJS.Layout(
+    #     hovermode="closest",
+    #     hoverlabel_align="left",
+    #     plot_bgcolor="white",
+    #     paper_bgcolor="white",
+    #     font_size=18,
+    #        xaxis=attr(showline=true, ticks="outside", showgrid=false,
+    #            linewidth=1.5, zeroline=false,),
+    #     yaxis=attr(showline=true, ticks="outside", showgrid=true,
+    #            linewidth=1.5, zeroline=false, color="black",),
+    #     title = title,
+    #     xaxis_title = "",
+    #     yaxis_title = "Power (kW)",
+    #     xaxis_rangeslider_visible=true,
+    #     legend=attr(x=1.07, y=0.5, 
+    #                 font=attr(
+    #                 size=14,
+    #                 color="black",),
+    #                 ),)
 
     p = PlotlyJS.plot(traces, layout)
 
@@ -179,4 +170,3 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     PlotlyJS.plot(traces, layout)  # will not produce plot in a loop
 end
-
