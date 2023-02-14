@@ -106,6 +106,9 @@ function plot_electric_dispatch(dict)
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
 
+    colors = ["#fea600", "#e604b3", "#ff552b", "#1ce0b2", "#4149a3", "#ba8dd4", "#25738b", "#79c6c1", "#207a3f"]
+    count = 1
+    
     for key in keys
         if haskey(dict, key)
             sub_dict = get(dict, key, nothing)
@@ -136,9 +139,14 @@ function plot_electric_dispatch(dict)
                         x = dr_v,
                         y = total_array,
                         fill = "tonexty",
+                        marker = PlotlyJS.attr(
+                            color=colors[count],
+                        ),
                         line = PlotlyJS.attr(
                             width = 0),
                       ))
+                      
+                    count += 1
                 end
             end
         end
