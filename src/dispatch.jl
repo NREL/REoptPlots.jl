@@ -99,45 +99,42 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     add_array(d["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
     
-    # for a_key in key_names
-    #     if haskey(d, a_key)
-    #         sub_dict = get(d, a_key, nothing)
-    #         for name in names
-    #             if haskey(sub_dict, name)
-    #                 data_array = get(sub_dict, name, nothing)
+    for a_key in key_names
+        if haskey(d, a_key)
+            sub_dict = get(d, a_key, nothing)
+            for name in names
+                if haskey(sub_dict, name)
+                    data_array = get(sub_dict, name, nothing)
 
-    #                 # Define an empty array to store the data arrays                    
-    #                 #invisible line for stacking
-    #                 push!(traces, scatter(
-    #                     name = "invisible",
-    #                     x = dr_v,
-    #                     y = total_array,
-    #                     mode="lines",
-    #                     fill = Nothing,
-    #                     line=attr(width=0),
-    #                     showlegend = false,
-    #                     hoverinfo = "skip"
-    #                 ))
+                    # Define an empty array to store the data arrays                    
+                    #invisible line for stacking
+                    push!(traces, scatter(
+                        name = "invisible",
+                        x = dr_v,
+                        y = total_array,
+                        mode="lines",
+                        fill = Nothing,
+                        line=attr(width=0),
+                        showlegend = false,
+                        hoverinfo = "skip"
+                    ))
 
-    #                 add_array(data_array)
-    #                 total_array = create_total_array()
+                    add_array(data_array)
+                    total_array = create_total_array()
 
-    #                 #plot each technology
-    #                 push!(traces, scatter(
-    #                     name = a_key,
-    #                     x = dr_v,
-    #                     y = total_array,
-    #                     mode = "lines",
-    #                     fill = "tonexty",
-    #                     line=attr(width=0)
-    #                     ))
-                        
-    #                 # current_color_index += 1
-                    
-    #             end
-    #         end
-    #     end
-    # end
+                    #plot each technology
+                    push!(traces, scatter(
+                        name = a_key,
+                        x = dr_v,
+                        y = total_array,
+                        mode = "lines",
+                        fill = "tonexty",
+                        line=attr(width=0)
+                        ))                    
+                end
+            end
+        end
+    end
 
     layout = PlotlyJS.Layout(
         hovermode="closest",
