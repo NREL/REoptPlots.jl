@@ -39,31 +39,22 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     # Function to add a new data array to the existing array
     function add_array(new_array)
-        # Check if the new array is a 1-d array
-        if ndims(new_array) != 1
-            println("Error: Not a 1-d array")
+        # Check if the length of the new array matches with existing arrays
+        if length(arrays) > 0 && length(new_array) != length(arrays[1])
+            println("Error: Length of new array does not match existing arrays")
         else
-            # Check if the length of the new array matches with existing arrays
-            if length(arrays) > 0 && length(new_array) != length(arrays[1])
-                println("Error: Length of new array does not match existing arrays")
-            else
-                # Add the new array to the existing array
-                push!(arrays, new_array)
-            end
+            # Add the new array to the existing array
+            push!(arrays, new_array)
         end
     end
 
     # Function to create a total array
     function create_total_array()
-        if length(arrays) == 0
-            println("Error: No arrays found")
-        else
-            total_array = similar(arrays[1])
-            for i in 1:length(arrays)
-                total_array = total_array .+ arrays[i]
-            end
-            return total_array
+        total_array = similar(arrays[1])
+        for i in eachindex(arrays)
+            total_array = total_array .+ arrays[i]
         end
+        return total_array
     end
     
     key_list = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
@@ -140,7 +131,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         end
     end
 
-    layout = PlotlyJS.Layout(
+    layout = Layout(
         hovermode="closest",
         hoverlabel_align="left",
         plot_bgcolor="white",
