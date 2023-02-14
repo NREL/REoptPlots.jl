@@ -94,47 +94,47 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     current_color_index = 1   
 
-    for a_key in key_list
-        if haskey(d, a_key)
-            sub_dict = get(d, a_key, nothing)
-            data_array = []
-            empty(data_array)
+    # for a_key in key_list
+    #     if haskey(d, a_key)
+    #         sub_dict = get(d, a_key, nothing)
+    #         data_array = []
+    #         empty(data_array)
 
-            data_array = get(sub_dict, "electric_to_load_series_kw", nothing)
+    #         data_array = get(sub_dict, "electric_to_load_series_kw", nothing)
 
-            if a_key == "ElectricStorage"
-                data_array = get(sub_dict,"storage_to_load_series_kw", nothing)
-            end
+    #         if a_key == "ElectricStorage"
+    #             data_array = get(sub_dict,"storage_to_load_series_kw", nothing)
+    #         end
 
-            # Define an empty array to store the data arrays                    
-            #invisible line for stacking
-            push!(traces, scatter(
-                name = "invisible",
-                x = dr_v,
-                y = total_array,
-                mode="lines",
-                fill = Nothing,
-                line=attr(width=0),
-                showlegend = false,
-                hoverinfo = "skip"
-            ))
+    #         # Define an empty array to store the data arrays                    
+    #         #invisible line for stacking
+    #         push!(traces, scatter(
+    #             name = "invisible",
+    #             x = dr_v,
+    #             y = total_array,
+    #             mode="lines",
+    #             fill = Nothing,
+    #             line=attr(width=0),
+    #             showlegend = false,
+    #             hoverinfo = "skip"
+    #         ))
 
-            add_array(data_array)
-            total_array = create_total_array()
+    #         add_array(data_array)
+    #         total_array = create_total_array()
 
-            #plot each technology
-            push!(traces, scatter(
-                name = a_key,
-                x = dr_v,
-                y = total_array,
-                mode = "lines",
-                fill = "tonexty",
-                line=attr(width=0,color = color_list[current_color_index])
-                ))        
+    #         #plot each technology
+    #         push!(traces, scatter(
+    #             name = a_key,
+    #             x = dr_v,
+    #             y = total_array,
+    #             mode = "lines",
+    #             fill = "tonexty",
+    #             line=attr(width=0,color = color_list[current_color_index])
+    #             ))        
             
-            current_color_index = current_color_index + 1
-        end
-    end
+    #         current_color_index = current_color_index + 1
+    #     end
+    # end
 
     # layout = Layout(
     #     hovermode="closest",
