@@ -29,8 +29,6 @@
 # *********************************************************************************
 
 # Define an empty array to store data arrays
-arrays = []
-
 # Function to add a new data array to the existing array
 function add_array(new_array)
     # Check if the new array is a 1-d array
@@ -60,22 +58,8 @@ function create_total_array()
     end
 end
 
-function rec_flatten_dict(d, prefix_delim = ".")
-    new_d = empty(d)
-    for (key, value) in pairs(d)
-        if isa(value, Dict)
-             flattened_value = rec_flatten_dict(value, prefix_delim)
-             for (ikey, ivalue) in pairs(flattened_value)
-                 new_d["$key.$ikey"] = ivalue
-             end
-        else
-            new_d[key] = value
-        end
-    end
-    return new_d
-end
-
 function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", save_html=true)
+
     key_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     names = ["electric_to_load_series_kw", "storage_to_load_series_kw"]
     
@@ -107,6 +91,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     pop!(dr_v)
     
     total_array = []
+    arrays = []
 
     ### REopt Data Plotting
     ### Electric Load Line Plot
@@ -143,9 +128,9 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     current_color_index = 1
 
-    for key in key_names
-        if haskey(dict, key)
-            sub_dict = get(dict, key, nothing)
+    for a_key in key_names
+        if haskey(dict, a_key)
+            sub_dict = get(dict, a_key, nothing)
             for name in names
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
@@ -169,7 +154,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
 
                     #plot each technology
                     push!(traces, PlotlyJS.scatter(
-                        name = key,
+                        name = a_key,
                         x = dr_v,
                         y = total_array,
                         fill = "tonexty",
