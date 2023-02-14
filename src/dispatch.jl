@@ -48,8 +48,12 @@ function plot_electric_dispatch(dict)
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
                     push!(traces, PlotlyJS.scatter(
+                        name = key,
                         x = dr_v,
-                        y = data_array)
+                        y = data_array,
+                        fill = "tonexty",
+                        line = PlotlyJS.attr(width = 0)
+                        )
                     )
                 end
             end
