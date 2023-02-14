@@ -263,6 +263,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
                                 side = "right"
                             ),)
                     end
+                    
                     current_color_index += 1
                     
                 end
