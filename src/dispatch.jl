@@ -40,18 +40,14 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     # Define the size of the existing data array
     data_size = length(eload)
     
-    # Calculate the time interval based on the data size
-    total_seconds = (data_size - 1) * 10
-    time_interval = Second(total_seconds / data_size) 
-    
     # Define the start time for the date and time array
     start_time = DateTime(year, 1, 1, 0, 0, 0)
     
     # Define the end time for the date and time array based on the size of the data array and time interval
-    end_time = start_time + (data_size - 1) * time_interval
+    end_time = DateTime(year+1, 1, 1, 0, 0, 0)
     
     # Create the date and time array with the specified time interval
-    dr_v = collect(start_time:time_interval:end_time) 
+    dr_v = collect(start_time:check_interval(data_size):end_time) 
     
     ### REopt Data Plotting
     ### Total Electric Load Line Plot
@@ -140,4 +136,16 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     end
 
     plot(traces, layout)  # will not produce plot in a loop
+end
+
+
+function check_interval(arr::Array)
+    if length(arr) < 10000
+        interval = Dates.Minute(15)
+    elseif length(arr) < 100000
+        interval = Dates.Minute(30)
+    else
+        interval = Dates.Hour(1)
+    end
+    return interval
 end
