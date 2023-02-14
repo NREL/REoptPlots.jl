@@ -85,7 +85,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
         ),
         marker = PlotlyJS.attr(
             color="#003f5c",
-        )
+        ),
     ))
 
     push!(traces, PlotlyJS.scatter(
@@ -105,6 +105,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
     total_array = create_total_array()
 
     color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
+
     current_color_index = 1
 
     for key in keys
