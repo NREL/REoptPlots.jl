@@ -103,7 +103,7 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
 
     add_array(dict["ElectricUtility"]["electric_to_load_series_kw"])
     total_array = create_total_array()
-    count = 1
+
     for key in keys
         if haskey(dict, key)
             sub_dict = get(dict, key, nothing)
@@ -135,12 +135,8 @@ function plot_electric_dispatch(dict::Dict; title="Electric Systems Dispatch", s
                         y = total_array,
                         fill = "tonexty",
                         line = PlotlyJS.attr(
-                            width = 0
-                        )
+                            width = 0),
                         ))
-                    
-                    count += 1
-                    println(count)
                 end
             end
         end
