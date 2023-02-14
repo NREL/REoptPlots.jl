@@ -35,17 +35,15 @@ function check_time_interval(arr::Array)
         elseif length(arr) == 35040
             interval = Dates.Minute(15)
         else
-            error("Array length must be either 8760, 17520, or 35040")
+            error("Time interval length must be either 8760, 17520, or 35040")
         end
         return interval
     end
 
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=true,display_stats=true)
     
     tech_names = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
-
     traces = GenericTrace[]
-
     eload = d["ElectricLoad"]["load_series_kw"]
 
     #Define year
@@ -58,10 +56,67 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     # Create the date and time array with the specified time interval
     dr = start_time:check_time_interval(eload):end_time
     dr_v = collect(dr)
-    pop!(dr_v) #remove the last value of the array to match array sizes
 
-    
-    ### REopt Data Plotting
+    #remove the last value of the array to match array sizes
+    pop!(dr_v)
+
+    if display_stats
+        ###Plot Stats
+        df_stat = rec_flatten_dict(d)
+        load  = get(df_stat,"ElectricLoad.load_series_kw","-")
+        avg_val = round(mean(load))
+        max_val = round(maximum(load))
+        min_val = round(minimum(load))
+
+        x_stat = [first(dr_v),dr_v[end-100]]
+        y_stat1 = [min_val,min_val]
+        y_stat2 = [max_val,max_val]
+        y_stat3 = [avg_val,avg_val]
+        
+        push!(traces, scatter(
+        x = x_stat,
+        y = y_stat1,
+        showlegend = false,
+        legendgroup="group2",
+        line=attr(color="grey", width=0.5,
+                                dash="dot"),
+        mode="lines+text",
+        name=String("Min = $(min_val) kW"),
+        text=[String("Min = $(min_val) kW")],
+        textposition="top right"
+            )
+        )
+
+        push!(traces, scatter(
+        x = x_stat,
+        y = y_stat2,
+        showlegend = false,
+        legendgroup="group2",
+        line=attr(color="grey", width=0.5,
+                                dash="dot"),
+        mode="lines+text",
+        name=String("Max = $(max_val) kW"),
+        text=[String("Max = $(max_val) kW")],
+        textposition="top right"
+            )
+        )
+
+        push!(traces, scatter(
+        x = x_stat,
+        y = y_stat3,
+        showlegend = false,
+        legendgroup="group2",
+        line=attr(color="grey", width=0.5,
+                                dash="dot"),
+        mode="lines+text",
+        name=String("Avg = $(avg_val) kW"),
+        text=[String("Avg = $(avg_val) kW")],
+        textposition="top right"
+            )
+        )
+    end
+
+    ### REopt Data Plotting Begins
     ### Total Electric Load Line Plot
     push!(traces, scatter(;
         name = "Total Electric Load",
