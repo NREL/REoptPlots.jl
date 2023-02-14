@@ -58,8 +58,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         line = attr(width=0, color="#0000ff")
     ))
 
-    # color_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
-    # current_color_index = 1   
+    colors_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
+    current_color_index = 1   
 
     #Plot every existing technology
     cumulative_data = zeros(length(dr_v))
@@ -95,16 +95,27 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                 y = cumulative_data,
                 mode = "lines",
                 fill = "tonexty",
-                line = attr(width=0)
+                line = attr(width=0, color = colors_list[current_color_index])
             ))        
             
+            current_color_index += 1
         end
     end
     
-    layout = Layout(
-        title_text = title,
-        yaxis_title_text = "Power (kW)",
-        )
+    layout = PlotlyJS.Layout(
+        hovermode="closest",
+        hoverlabel_align="left",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font_size=18,
+        xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
+        yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
+        title = title,
+        xaxis_title = "",
+        yaxis_title = "Power (kW)",
+        xaxis_rangeslider_visible=true,
+        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
+
 
     p = plot(traces, layout)
 
