@@ -29,6 +29,37 @@
 # *********************************************************************************
 
 ####BASE###
+# Define an empty array to store data arrays
+arrays = []
+
+# Function to add a new data array to the existing array
+function add_array(new_array)
+    # Check if the new array is a 1-d array
+    if ndims(new_array) != 1
+        println("Error: Not a 1-d array")
+    else
+        # Check if the length of the new array matches with existing arrays
+        if length(arrays) > 0 && length(new_array) != length(arrays[1])
+            println("Error: Length of new array does not match existing arrays")
+        else
+            # Add the new array to the existing array
+            push!(arrays, new_array)
+        end
+    end
+end
+
+# Function to create a total array
+function create_total_array()
+    if length(arrays) == 0
+        println("Error: No arrays found")
+    else
+        total_array = similar(arrays[1])
+        for i in 1:length(arrays)
+            total_array = total_array .+ arrays[i]
+        end
+        return total_array
+    end
+end
 
 function plot_electric_dispatch(dict)
     keys = ["ElectricUtility","PV","ElectricStorage","Generator","Wind","CHP","GHP"]
@@ -42,7 +73,7 @@ function plot_electric_dispatch(dict)
         yaxis_title_text = "Power (kW)",
         )
     
-    result_array = []
+    total_array = []
 
     for key in keys
         if haskey(dict, key)
@@ -50,34 +81,44 @@ function plot_electric_dispatch(dict)
             for name in names
                 if haskey(sub_dict, name)
                     data_array = get(sub_dict, name, nothing)
+                    # Define an empty array to store the data arrays                    
+                    #invisible line for stacking
+                    push!(traces, PlotlyJS.scatter(
+                        name = "invisible",
+                        x = dr_v,
+                        y = total_array,
+                        fill = Nothing,
+                        line = PlotlyJS.attr(
+                            width = 0
+                        ),
+                        showlegend = false,
+                        hoverinfo = "skip",
+                    ))
                     
-                    push!(result_array, data_array)
-                    println(key)
-                    println(name)
-                    println(result_array)
-                    # total_array = result_array[1]
-                    # for array in result_array[2:end]
-                    #     total_array .+= array
-                    # end
+                    add_array(data_array)
+                    total_array = create_total_array()
 
-                    # push!(traces, PlotlyJS.scatter(
-                    #     name = "invisible",
-                    #     x = dr_v,
-                    #     y_sum = total_array,
-                    #     fill = Nothing,
-                    #     line = PlotlyJS.attr(
-                    #         width = 0
-                    #     ),
-                    #     showlegend = false,
-                    #     hoverinfo = "skip",
-                    # ))
-                    # #plot each technology
-                    # push!(traces, PlotlyJS.scatter(
-                    #     name = key,
-                    #     x = dr_v,
-                    #     y = data_array,
-                    #     fill = "tonexty")
-                    # )
+                    #plot each technology
+                    push!(traces, PlotlyJS.scatter(
+                        name = key,
+                        x = dr_v,
+                        y = total_array,
+                        fill = "tonexty")
+                      )
+
+                    # Define an empty array to store the data arrays                    
+                    #invisible line for stacking
+                    push!(traces, PlotlyJS.scatter(
+                        name = "invisible",
+                        x = dr_v,
+                        y = total_array,
+                        fill = Nothing,
+                        line = PlotlyJS.attr(
+                            width = 0
+                        ),
+                        showlegend = false,
+                        hoverinfo = "skip",
+                    ))
                 end
             end
         end
