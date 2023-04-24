@@ -45,7 +45,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
     
     tech_names  = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
-    eload       = d["ElectricLoad"]["load_series_kw"]
+    eload = d["ElectricLoad"]["load_series_kw"]
 
     # Define the start and end time for the date and time array
     start_time  = DateTime(year, 1, 1, 0, 0, 0)
@@ -127,7 +127,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     ### Grid to Load Plot
     push!(traces, scatter(;
-        name = "Grid Serving Load",
+        name = "Grid to Load",
         x = dr_v,
         y = d["ElectricUtility"]["electric_to_load_series_kw"],
         mode = "lines",
@@ -207,7 +207,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             
             #plot each technology
             push!(traces, scatter(;
-                name = tech,
+                name = tech* "to Load",
                 x = dr_v,
                 y = cumulative_data,
                 mode = "lines",
