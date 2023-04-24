@@ -27,7 +27,7 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false, year=2017)
     
     traces = GenericTrace[]
     layout = Layout(
@@ -46,9 +46,6 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     
     tech_names  = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
     eload       = d["ElectricLoad"]["load_series_kw"]
-
-    #Define year
-    year = 2017
 
     # Define the start and end time for the date and time array
     start_time  = DateTime(year, 1, 1, 0, 0, 0)
