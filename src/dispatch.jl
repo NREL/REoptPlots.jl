@@ -44,7 +44,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         xaxis_rangeslider_visible=true,
         legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
     
-    tech_names  = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+    tech_names  = ["ElectricUtility", "PV", "ElectricStorage", "Generator", "Wind", "CHP", "GHP"]
     eload = d["ElectricLoad"]["load_series_kw"]
 
     # Define the start and end time for the date and time array
@@ -53,10 +53,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     # Create the date and time array with the specified time interval
     dr = start_time:check_time_interval(eload):end_time
-    dr_v = collect(dr)
-
-    #remove the last value of the array to match array sizes
-    pop!(dr_v)
+    dr_v = collect(dr) 
+    pop!(dr_v) # pop removes last ts
 
     if display_stats
         ###Plot Stats
@@ -188,44 +186,53 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     for key in keys
         for tech in tech_names
             if haskey(d,tech)
-                sub_dict = d[tech]
-                if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
-                             
-                    #invisble line for plotting
-                    push!(traces, scatter(
-                        name = "invisible",			
-                        x = dr_v,
-                        y = cumulative_data,
-                        mode = "lines",
-                        fill = Nothing,
-                        line = attr(width = 0),
-                        showlegend = false,
-                        hoverinfo = "skip",
-                    )) 
+                if tech == "ElectricUtility" && key == "electric_to_load_series_kw"
+                    continue
+                else
+                    sub_dict = d[tech]
+                    if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
+                                
+                        #invisble line for plotting
+                        push!(traces, scatter(
+                            name = "invisible",			
+                            x = dr_v,
+                            y = cumulative_data,
+                            mode = "lines",
+                            fill = Nothing,
+                            line = attr(width = 0),
+                            showlegend = false,
+                            hoverinfo = "skip",
+                        )) 
 
-                    new_data = sub_dict[key] 
-                    cumulative_data = cumulative_data .+ new_data
+                        new_data = sub_dict[key] 
+                        cumulative_data = cumulative_data .+ new_data
 
-                    if contains(key, "to_load")
-                        txt = "to Load"
-                    elseif contains(key, "to_grid")
-                        txt = "to Grid"
-                    elseif contains(key, "to_storage")
-                        txt = "to Storage"
-                    elseif contains(key, "curtailed")
-                        txt = "Curtailed"
+                        if contains(key, "to_load")
+                            txt = "to Load"
+                        elseif contains(key, "to_grid")
+                            txt = "to Grid"
+                        elseif contains(key, "to_storage")
+                            txt = "to Storage"
+                        elseif contains(key, "curtailed")
+                            txt = "Curtailed"
+                        end
+
+                        tech_name = tech
+                        if tech == "ElectricUtility"
+                            tech_name = "Grid"
+                        end
+                        
+                        push!(traces, scatter(;
+                            name = tech* " "*txt,
+                            x = dr_v,
+                            y = cumulative_data,
+                            mode = "lines",
+                            fill = "tonexty",
+                            line = attr(width=0, color = colors_list[current_color_index])
+                        ))   
+
+                        current_color_index += 1
                     end
-                    
-                    push!(traces, scatter(;
-                        name = tech* " "*txt,
-                        x = dr_v,
-                        y = cumulative_data,
-                        mode = "lines",
-                        fill = "tonexty",
-                        line = attr(width=0, color = colors_list[current_color_index])
-                    ))   
-
-                    current_color_index += 1
                 end
             end
         end
