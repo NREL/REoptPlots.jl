@@ -138,84 +138,96 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     colors_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
     current_color_index = 1   
 
+    if haskey(d, "ElectricStorage")
+        sub_dict = d[tech]
+        ### Battery SOC line plot
+        push!(traces, scatter(
+            name = "Battery State of Charge",
+            x = dr_v,
+            y = d["ElectricStorage"]["soc_series_fraction"]*100,
+            yaxis="y2",
+            line = attr(
+            dash= "dashdot",
+            width = 1
+            ),
+            marker = attr(
+                color="rgb(100,100,100)"
+            ),
+        ))
+
+        layout = Layout(
+            hovermode="closest",
+            hoverlabel_align="left",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font_size=18,
+            xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                linewidth=1.5, zeroline=false),
+            yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                linewidth=1.5, zeroline=false),
+            xaxis_title = "",
+            yaxis_title = "Power (kW)",
+            xaxis_rangeslider_visible=true,
+            legend=attr(x=1.07, y=0.5, 
+                        font=attr(
+                        size=14,
+                        color="black")
+                        ),
+            yaxis2 = attr(
+                title = "State of Charge (Percent)",
+                overlaying = "y",
+                side = "right"
+            ))
+
+    end
+
     #Plot every existing technology
     cumulative_data = zeros(length(dr_v))
     cumulative_data = cumulative_data .+ d["ElectricUtility"]["electric_to_load_series_kw"]
+    keys = ["storage_to_load_series_kw", "electric_to_load_series_kw", "electric_to_grid_series_kw", "electric_to_storage_series_kw", "electric_curtailed_series_kw"]
+    for key in keys
+        for tech in tech_names
+            if haskey(d,tech)
+                sub_dict = d[tech]
+                if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
+                             
+                    #invisble line for plotting
+                    push!(traces, scatter(
+                        name = "invisible",			
+                        x = dr_v,
+                        y = cumulative_data,
+                        mode = "lines",
+                        fill = Nothing,
+                        line = attr(width = 0),
+                        showlegend = false,
+                        hoverinfo = "skip",
+                    )) 
 
-    for tech in tech_names
-        if haskey(d, tech)
-            sub_dict = d[tech]
-            if tech == "ElectricStorage"
-                new_data = sub_dict["storage_to_load_series_kw"]
+                    new_data = sub_dict[key] 
+                    cumulative_data = cumulative_data .+ new_data
 
-                ### Battery SOC line plot
-                push!(traces, scatter(
-                    name = "Battery State of Charge",
-                    x = dr_v,
-                    y = d["ElectricStorage"]["soc_series_fraction"]*100,
-                    yaxis="y2",
-                    line = attr(
-                    dash= "dashdot",
-                    width = 1
-                    ),
-                    marker = attr(
-                        color="rgb(100,100,100)"
-                    ),
-                ))
+                    if contains(key, "to_load")
+                        txt = "to Load"
+                    elseif contains(key, "to_grid")
+                        txt = "to Grid"
+                    elseif contains(key, "to_storage")
+                        txt = "to Storage"
+                    elseif contains(key, "curtailed")
+                        txt = "Curtailed"
+                    end
+                    
+                    push!(traces, scatter(;
+                        name = tech* " "*txt,
+                        x = dr_v,
+                        y = cumulative_data,
+                        mode = "lines",
+                        fill = "tonexty",
+                        line = attr(width=0, color = colors_list[current_color_index])
+                    ))   
 
-                layout = Layout(
-                    hovermode="closest",
-                    hoverlabel_align="left",
-                    plot_bgcolor="white",
-                    paper_bgcolor="white",
-                    font_size=18,
-                    xaxis=attr(showline=true, ticks="outside", showgrid=false,
-                        linewidth=1.5, zeroline=false),
-                    yaxis=attr(showline=true, ticks="outside", showgrid=false,
-                        linewidth=1.5, zeroline=false),
-                    xaxis_title = "",
-                    yaxis_title = "Power (kW)",
-                    xaxis_rangeslider_visible=true,
-                    legend=attr(x=1.07, y=0.5, 
-                                font=attr(
-                                size=14,
-                                color="black")
-                                ),
-                    yaxis2 = attr(
-                        title = "State of Charge (Percent)",
-                        overlaying = "y",
-                        side = "right"
-                    ))
-
-            else
-                new_data = sub_dict["electric_to_load_series_kw"]
+                    current_color_index += 1
+                end
             end
-            
-            #invisble line for plotting
-            push!(traces, scatter(
-                name = "invisible",			
-                x = dr_v,
-                y = cumulative_data,
-                mode = "lines",
-                fill = Nothing,
-                line = attr(width = 0),
-                showlegend = false,
-                hoverinfo = "skip",
-            )) 
-
-            cumulative_data = cumulative_data .+ new_data
-            
-            #plot each technology
-            push!(traces, scatter(;
-                name = tech* "to Load",
-                x = dr_v,
-                y = cumulative_data,
-                mode = "lines",
-                fill = "tonexty",
-                line = attr(width=0, color = colors_list[current_color_index])
-            ))        
-            
-            current_color_index += 1
         end
     end
 
