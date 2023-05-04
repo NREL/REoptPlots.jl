@@ -46,10 +46,39 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     
     tech_names  = ["ElectricUtility", "PV", "ElectricStorage", "Generator", "Wind", "CHP", "GHP"]
     eload = d["ElectricLoad"]["load_series_kw"]
+    keys = ["storage_to_load_series_kw", "electric_to_load_series_kw", "electric_to_grid_series_kw", "electric_to_storage_series_kw", "electric_curtailed_series_kw"]
+
+    # Colors for dispatch plot
+    colors = Dict()
+    colors["ElectricUtility"] = Dict(
+        "electric_to_load_series_kw" => "lightgrey",
+        "electric_to_storage_series_kw" => "darkgrey"
+    )
+    colors["PV"] = Dict(
+        "electric_to_load_series_kw" => "darkred",
+        "electric_to_grid_series_kw" => "coral",
+        "electric_to_storage_series_kw" => "darkorange1",
+        "electric_curtailed_series_kw" => "goldenrod"
+    )
+    colors["ElectricStorage"] = Dict(
+        "storage_to_load_series_kw" => "dodgerblue3",
+    )
+    colors["Generator"] = Dict(
+        "electric_to_load_series_kw" => "rebeccapurple",
+        "electric_to_grid_series_kw" => "thistle1",
+        "electric_to_storage_series_kw" => "mediumorchid3"
+    )
+    colors["Wind"] = Dict(
+        "electric_to_load_series_kw" => "lightskyblue1",
+        "electric_to_grid_series_kw" => "lightblue1",
+        "electric_to_storage_series_kw" => "deepskyblue3",
+        "electric_curtailed_series_kw" => "cadetblue1"
+    )
+    # TODO: add CHP and GHP to colors 
 
     # Define the start and end time for the date and time array
-    start_time  = DateTime(year, 1, 1, 0, 0, 0)
-    end_time    = DateTime(year+1, 1, 1, 0, 0, 0)
+    start_time = DateTime(year, 1, 1, 0, 0, 0)
+    end_time = DateTime(year+1, 1, 1, 0, 0, 0)
 
     # Create the date and time array with the specified time interval
     dr = start_time:check_time_interval(eload):end_time
@@ -120,7 +149,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         y = d["ElectricLoad"]["load_series_kw"],
         mode = "lines",
         fill = "none",
-        line=attr(width=1, color="#003f5c")
+        line=attr(width=1, color="black")
     ))
 
     ### Grid to Load Plot
@@ -130,11 +159,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         y = d["ElectricUtility"]["electric_to_load_series_kw"],
         mode = "lines",
         fill = "tozeroy",
-        line = attr(width=0, color="#0000ff")
+        line = attr(width=0, color=colors["ElectricUtility"]["electric_to_load_series_kw"])
     ))
-
-    colors_list = ["#fea600", "#e604b3", "#ff552b", "#70ce57", "#33783f", "#52e9e6", "#326f9c", "#c2c5e2", "#760796"]
-    current_color_index = 1   
 
     if haskey(d, "ElectricStorage")
         sub_dict = d[tech]
@@ -179,10 +205,9 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     end
 
-    #Plot every existing technology
+    # Plot every existing technology
     cumulative_data = zeros(length(dr_v))
     cumulative_data = cumulative_data .+ d["ElectricUtility"]["electric_to_load_series_kw"]
-    keys = ["storage_to_load_series_kw", "electric_to_load_series_kw", "electric_to_grid_series_kw", "electric_to_storage_series_kw", "electric_curtailed_series_kw"]
     for key in keys
         for tech in tech_names
             if haskey(d,tech)
@@ -208,11 +233,11 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                         cumulative_data = cumulative_data .+ new_data
 
                         if contains(key, "to_load")
-                            txt = "to Load"
+                            txt = "Serving Load"
                         elseif contains(key, "to_grid")
-                            txt = "to Grid"
+                            txt = "Export to Grid"
                         elseif contains(key, "to_storage")
-                            txt = "to Storage"
+                            txt = "Charging Storage"
                         elseif contains(key, "curtailed")
                             txt = "Curtailed"
                         end
@@ -228,10 +253,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                             y = cumulative_data,
                             mode = "lines",
                             fill = "tonexty",
-                            line = attr(width=0, color = colors_list[current_color_index])
+                            line = attr(width=0, color = colors[tech][key])
                         ))   
-
-                        current_color_index += 1
                     end
                 end
             end
