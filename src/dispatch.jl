@@ -163,7 +163,6 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     ))
 
     if haskey(d, "ElectricStorage")
-        sub_dict = d["ElectricStorage"]
         ### Battery SOC line plot
         push!(traces, scatter(
             name = "Battery State of Charge",
