@@ -1,5 +1,9 @@
 # REoptPlots Changelog
 
+## v0.1.6
+### Added
+    -Bug fix allowing it to handle multiple pvs and single pv
+
 ## v0.1.5
 ### Added
     -Added logic to check for data that exists
