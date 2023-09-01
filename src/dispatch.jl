@@ -303,9 +303,9 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                             color_to_use = net_tech_color_dict[tech]
                         else  # Other instances, use gradient
                             if idx == 2  # Generate gradient colors only when you reach the second instance
-                                gradient_colors = generate_gradient(net_tech_color_dict[tech], length(d[tech]) - 1)  # One fewer than the number of instances
+                                gradient_net_colors = generate_gradient(net_tech_color_dict[tech], length(d[tech]) - 1)  # One fewer than the number of instances
                             end
-                            color_to_use = gradient_colors[idx - 1]  # Use idx - 1 because gradient starts from the second instance
+                            color_to_use = gradient_net_colors[idx - 1]  # Use idx - 1 because gradient starts from the second instance
                         end
                     else  # Single instance
                         color_to_use = net_tech_color_dict[tech]
