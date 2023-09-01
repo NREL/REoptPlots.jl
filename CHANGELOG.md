@@ -1,12 +1,12 @@
 # REoptPlots Changelog
-## v0.1.5
-    -Added option to save dispatch data
-    -Added logic to check for data that exists
-    -multiple pvs enabled
+
 ## v0.1.4
 ### Added
     -Specific colors for each technology
     -optional arguments to plot statistics
+    -Added option to save dispatch data
+    -Added logic to check for data that exists
+    -multiple pvs enabled
 ## v0.1.3
 ### Added
     - Generator plot
