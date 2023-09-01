@@ -171,7 +171,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                         color="rgb(100,100,100)"
                     ),
                 ))
-
+                push!(dispatch_data,["Battery State of Charge",new_data])
                 layout = Layout(
 					hovermode="closest",
 					hoverlabel_align="left",
@@ -244,6 +244,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                             line = attr(width=0, color = color_to_use)
                         ))
                     end
+                    push!(dispatch_data,[full_name * " Serving Load",new_data])
                     # After plotting, set the flag to true
                     already_plotted = true
                 end
@@ -276,6 +277,8 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                     fill = "tonexty",
                     line = attr(width=0, color = tech_color_dict[tech])
                 ))
+
+                push!(dispatch_data,[tech * " Serving Load",new_data])
             end
         end
     end
@@ -335,6 +338,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                             fill = "tonexty",
                             line = attr(width=0, color = color_to_use)
                         ))
+                        push!(dispatch_data,[full_name * " Exporting to Grid (NEM)",new_data])
                     end
                 end
             end
