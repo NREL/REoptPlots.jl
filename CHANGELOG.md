@@ -1,5 +1,7 @@
 # REoptPlots Changelog
-
+## v0.1.5
+    -Added option to save dispatch data
+    -Added logic to check for data that exists
 ## v0.1.4
 ### Added
     -Specific colors for each technology
