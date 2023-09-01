@@ -1,10 +1,9 @@
 # REoptPlots Changelog
 
 ## v0.1.4
-###Added
+### Added
     -Specific colors for each technology
     -optional arguments to plot statistics
-
 ## v0.1.3
 ### Added
     - Generator plot
