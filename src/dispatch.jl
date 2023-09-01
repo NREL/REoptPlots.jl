@@ -130,140 +130,147 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
     push!(dispatch_data,["Grid Serving Load",d["ElectricUtility"]["electric_to_load_series_kw"]])
 
 
- tech_color_dict =   Dict("PV" => "#fea600", "ElectricStorage" => "#e604b3", "Generator" => "#ff552b", "Wind" => "#70ce57", "CHP" => "#33783f", "GHP" => "#52e9e6")
- tech_names      =   ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+    tech_color_dict =   Dict("PV" => "#fea600", "ElectricStorage" => "#e604b3", "Generator" => "#ff552b", "Wind" => "#70ce57", "CHP" => "#33783f", "GHP" => "#52e9e6")
+    tech_names      =   ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
+	net_tech_color_dict =   Dict("PV" => "#326f9c", "Wind" => "#c2c5e2")
 
     #Plot every existing technology
 
     cumulative_data =   zeros(length(dr_v))
     cumulative_data =   cumulative_data .+ d["ElectricUtility"]["electric_to_load_series_kw"]
 
-
     for tech in tech_names
         if haskey(d, tech)
-               sub_dict  =   d[tech]
-            if tech     ==   "ElectricStorage"
-               new_data  =   sub_dict["storage_to_load_series_kw"]
-				if isempty(new_data)
-					continue
-				end
-                ### Battery SOC line plot
-                push!(traces, scatter(
-                    name  =   "Battery State of Charge",
-                    x     =   dr_v,
-                    y     =   d["ElectricStorage"]["soc_series_fraction"]*100,
-                    yaxis =   "y2",
-                    line  =   attr(
-                    dash  =   "dashdot",
-                    width =   1
-                    ),
-                    marker = attr(
-                        color =   "rgb(100,100,100)"
-                    ),
-                ))
-
-                push!(dispatch_data,["Battery State of Charge",new_data])
-
-
-                layout = Layout(
-					width            =   1280,
-					height           =   720,
-					hovermode        =   "closest",
-					hoverlabel_align =   "left",
-					plot_bgcolor     =   "white",
-					paper_bgcolor    =   "white",
-					font_size        =   18,
-					xaxis            =   attr(showline=true, ticks="outside", showgrid=true,
-						gridcolor =   "rgba(128, 128, 128, 0.2)", griddash =   "dot",
-						linewidth =   1.5,                        zeroline =   false),
-					yaxis=attr(showline=true, ticks="outside", showgrid=true,
-						gridcolor =   "rgba(128, 128, 128, 0.2)", griddash =   "dot",
-						linewidth =   1.5,                        zeroline =   false, range =   [0, y_max]),
-					xaxis_title               =   "",
-					yaxis_title               =   "Power (kW)",
-					xaxis_rangeslider_visible =   true,
-					legend                    =   attr(x=1.0, y=1.0, xanchor="right", yanchor="top", font=attr(size=14,color="black"),
-					bgcolor="rgba(255, 255, 255, 0.5)", bordercolor="rgba(128, 128, 128, 0.2)", borderwidth=1),
-					    yaxis2 = attr(
-						title      =   "State of Charge (Percent)",
-						overlaying =   "y",
-						side       =   "right",
-						range      =   [0, 100]
+            sub_dict = d[tech]
+            
+            if tech == "ElectricStorage"
+                if haskey(sub_dict, "storage_to_load_series_kw")
+                    new_data = sub_dict["storage_to_load_series_kw"]
+                    
+                    if isempty(new_data)
+                        continue
+                    end
+                    
+                    # Battery SOC line plot
+                    push!(traces, scatter(
+                        name = "Battery State of Charge",
+                        x = dr_v,
+                        y = d["ElectricStorage"]["soc_series_fraction"] * 100,
+                        yaxis = "y2",
+                        line = attr(
+                            dash = "dashdot",
+                            width = 1
+                        ),
+                        marker = attr(
+                            color = "rgb(100,100,100)"
+                        )
                     ))
+                    
+                    push!(dispatch_data, ["Battery State of Charge", new_data])
+                    
+                    layout = Layout(
+                        width            =   1280,
+                        height           =   720,
+                        hovermode        =   "closest",
+                        hoverlabel_align =   "left",
+                        plot_bgcolor     =   "white",
+                        paper_bgcolor    =   "white",
+                        font_size        =   18,
+                        xaxis            =   attr(showline=true, ticks="outside", showgrid=true,
+                            gridcolor =   "rgba(128, 128, 128, 0.2)", griddash =   "dot",
+                            linewidth =   1.5,                        zeroline =   false),
+                        yaxis=attr(showline=true, ticks="outside", showgrid=true,
+                            gridcolor =   "rgba(128, 128, 128, 0.2)", griddash =   "dot",
+                            linewidth =   1.5,                        zeroline =   false, range =   [0, y_max]),
+                        xaxis_title               =   "",
+                        yaxis_title               =   "Power (kW)",
+                        xaxis_rangeslider_visible =   true,
+                        legend                    =   attr(x=1.0, y=1.0, xanchor="right", yanchor="top", font=attr(size=14,color="black"),
+                        bgcolor="rgba(255, 255, 255, 0.5)", bordercolor="rgba(128, 128, 128, 0.2)", borderwidth=1),
+                            yaxis2 = attr(
+                            title      =   "State of Charge (Percent)",
+                            overlaying =   "y",
+                            side       =   "right",
+                            range      =   [0, 100]
+                        ))
+                end
             else
-                new_data =   sub_dict["electric_to_load_series_kw"]
+                if haskey(sub_dict, "electric_to_load_series_kw")
+                    new_data = sub_dict["electric_to_load_series_kw"]
+                    
+                    if any(x -> x > 0, new_data)
+                        # Invisible line for plotting
+                        push!(traces, scatter(
+                            name = "invisible",
+                            x = dr_v,
+                            y = cumulative_data,
+                            mode = "lines",
+                            fill = Nothing,
+                            line = attr(width = 0),
+                            showlegend = false,
+                            hoverinfo = "skip"
+                        ))
+    
+                        cumulative_data = cumulative_data .+ new_data
+                    
+                        # Plot each technology
+                        push!(traces, scatter(
+                            name = tech * " Serving Load",
+                            x = dr_v,
+                            y = cumulative_data,
+                            mode = "lines",
+                            fill = "tonexty",
+                            line = attr(width = 0, color = tech_color_dict[tech])
+                        ))
+                        
+                        push!(dispatch_data, [tech * " Serving Load", new_data])
+                    end
+                end
             end
-            if any(x -> x > 0, new_data)
-				#invisble line for plotting
-				push!(traces, scatter(
-					name       =   "invisible",
-					x          =   dr_v,
-					y          =   cumulative_data,
-					mode       =   "lines",
-					fill       =   Nothing,
-					line       =   attr(width = 0),
-					showlegend =   false,
-					hoverinfo  =   "skip",
-				))
-
-				cumulative_data =   cumulative_data .+ new_data
-				
-				#plot each technology
-				push!(traces, scatter(;
-					name =   tech * " Serving Load",
-					x    =   dr_v,
-					y    =   cumulative_data,
-					mode =   "lines",
-					fill =   "tonexty",
-					line =   attr(width=0, color = tech_color_dict[tech]),
-				))
-                push!(dispatch_data,[tech * " Serving Load",new_data])
-
-        
-			end
         end
-	end
-
-	net_tech_color_dict =   Dict("PV" => "#326f9c", "Wind" => "#c2c5e2")
-
-	#Net Metering Enabled
-	for tech in tech_names
+    end
+    
+    # Net Metering Enabled
+    for tech in tech_names
         if haskey(d, tech)
-				   sub_dict  =   d[tech]
-				if tech     ==   "PV" || tech ==   "Wind"
-				   new_data  =   sub_dict["electric_to_grid_series_kw"]
-				if any(x -> x > 0, new_data)
-					#invisble line for plotting
-					push!(traces, scatter(
-						name       =   "invisible",
-						x          =   dr_v,
-						y          =   cumulative_data,
-						mode       =   "lines",
-						fill       =   Nothing,
-						line       =   attr(width = 0),
-						showlegend =   false,
-						hoverinfo  =   "skip"
-                        )) 
+            sub_dict = d[tech]
+            
+            if tech == "PV" || tech == "Wind"
+                if haskey(sub_dict, "electric_to_grid_series_kw")
+                    new_data = sub_dict["electric_to_grid_series_kw"]
+                    
+                    if any(x -> x > 0, new_data)
+                        #invisble line for plotting
+                        push!(traces, scatter(
+                            name       =   "invisible",
+                            x          =   dr_v,
+                            y          =   cumulative_data,
+                            mode       =   "lines",
+                            fill       =   Nothing,
+                            line       =   attr(width = 0),
+                            showlegend =   false,
+                            hoverinfo  =   "skip"
+                            )) 
 
-					cumulative_data =   cumulative_data .+ new_data
-				
-					#plot each technology
-					push!(traces, scatter(;
-						name =   tech * " Exporting to Grid",
-						x    =   dr_v,
-						y    =   cumulative_data,
-						mode =   "lines",
-						fill =   "tonexty",
-						line =   attr(width=0, color = net_tech_color_dict[tech]),
-					))        
-                    push!(dispatch_data,[tech * " Exporting to Grid",new_data])
-
-				else
-					#donothing
-				end
-			end 
-		end
-	end
+                        cumulative_data =   cumulative_data .+ new_data
+                    
+                        #plot each technology
+                        push!(traces, scatter(;
+                            name =   tech * " Exporting to Grid",
+                            x    =   dr_v,
+                            y    =   cumulative_data,
+                            mode =   "lines",
+                            fill =   "tonexty",
+                            line =   attr(width=0, color = net_tech_color_dict[tech]),
+                            ))        
+                        push!(dispatch_data, [tech * " Exporting to Grid", new_data])
+                    else
+                        #donothing
+                    end
+                end
+            end
+        end
+    end
 	
   	# Plot the minimum, maximum, and average power values.
 	if display_stats
