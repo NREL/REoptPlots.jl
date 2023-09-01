@@ -129,14 +129,15 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
     ))
     push!(dispatch_data,["Grid Serving Load",d["ElectricUtility"]["electric_to_load_series_kw"]])
 
-    tech_color_dict     = Dict("PV" => "#fea600", "ElectricStorage" => "#e604b3", "Generator" => "#ff552b", "Wind" => "#70ce57", "CHP" => "#33783f", "GHP" => "#52e9e6")
+    tech_color_dict     = Dict("PV" => "#ffbb00", "ElectricStorage" => "#e604b3", "Generator" => "#ff552b", "Wind" => "#70ce57", "CHP" => "#33783f", "GHP" => "#52e9e6")
     tech_names  	    = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
-    net_tech_color_dict = Dict("PV" => "5a1b00", "Wind" => "#003a00")
-
+    net_tech_color_dict = Dict("PV" => "#5a1b00", "Wind" => "#003a00")
+    gradient_colors     = []
+    gradient_net_colors = []
     #Plot every existing technology
     cumulative_data = zeros(length(dr_v))
     cumulative_data = cumulative_data .+ d["ElectricUtility"]["electric_to_load_series_kw"]
- 
+    
     #################################################################
     ########################### Main loop ###########################
     for tech in tech_names
@@ -218,7 +219,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 
                         # Plot each instance
                         push!(traces, scatter(
-                            name = instance_name * " Serving Load",
+                            name = tech*'-'*instance_name * " Serving Load",
                             x = dr_v,
                             y = cumulative_data,
                             mode = "lines",
@@ -268,12 +269,16 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                     instance_name = get(instance, "name", tech)  # Default to 'tech' if 'name' is not present
 
                     if length(d[tech]) > 1  # Multiple instances
-                        if idx == 1  # Generate gradient colors only once
-                            gradient_net_colors = generate_gradient(net_tech_color_dict[tech], length(d[tech]))
+                        if idx == 1  # First instance, use base color
+                            color_to_use = tech_color_dict[tech]
+                        else  # Other instances, use gradient
+                            if idx == 2  # Generate gradient colors only when you reach the second instance
+                                gradient_colors = generate_gradient(tech_color_dict[tech], length(d[tech]) - 1)  # One fewer than the number of instances
+                            end
+                            color_to_use = gradient_colors[idx - 1]  # Use idx - 1 because gradient starts from the second instance
                         end
-                        color_to_use = gradient_net_colors[idx]
                     else  # Single instance
-                        color_to_use = net_tech_color_dict[tech]
+                        color_to_use = tech_color_dict[tech]
                     end
 
                     if any(x -> x > 0, new_data)
@@ -293,7 +298,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 
                         # Plot each instance exporting to the grid
                         push!(traces, scatter(
-                            name = instance_name * " Exporting to Grid",
+                            name = tech*'-'*instance_name * " Exporting to Grid (NEM)",
                             x = dr_v,
                             y = cumulative_data,
                             mode = "lines",
@@ -390,15 +395,18 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
     plot(traces, layout)  # will not produce plot in a loop
 end
 
-
 function generate_gradient(base_color, num_colors)
     # Base color in RGB form
-    r, g, b = parse(Int, base_color[2:3], 16), parse(Int, base_color[4:5], 16), parse(Int, base_color[6:7], 16)
+    r, g, b = parse(Int, base_color[2:3], base=16), parse(Int, base_color[4:5], base=16), parse(Int, base_color[6:7], base=16)
+    # RGB for white
+    r_white, g_white, b_white = 255, 255, 255
     # Generate gradient colors
     gradient_colors = []
     for i in 1:num_colors
-        factor = i / (num_colors + 1)
-        new_r, new_g, new_b = round(Int, r * factor), round(Int, g * factor), round(Int, b * factor)
+        factor = i / num_colors  # Removed "+ 1" to make the gradient steeper
+        new_r = round(Int, r + factor * (r_white - r))
+        new_g = round(Int, g + factor * (g_white - g))
+        new_b = round(Int, b + factor * (b_white - b))
         push!(gradient_colors, string("#", string(new_r, base=16, pad=2), string(new_g, base=16, pad=2), string(new_b, base=16, pad=2)))
     end
     return gradient_colors
