@@ -7,6 +7,7 @@
     -Added option to save dispatch data
     -Added logic to check for data that exists
     -multiple pvs enabled
+    -bug fixes
 ## v0.1.3
 ### Added
     - Generator plot
