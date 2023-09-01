@@ -1,7 +1,7 @@
 name = "REoptPlots"
 uuid = "81d7bfe7-808b-4a8e-bf67-c3577adb378e"
 authors = ["Nick Laws <nick.laws@nrel.gov>"]
-version = "0.1.7"
+version = "0.1.6"
 
 
 [deps]
