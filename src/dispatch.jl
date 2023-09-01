@@ -140,19 +140,28 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
     
     #################################################################
     ########################### Main loop ###########################
+    
     for tech in tech_names
+        already_plotted = false
         if haskey(d, tech)
+            # Check the type of d[tech]
+            if typeof(d[tech]) == Dict{String, Any}
+                d[tech] = [d[tech]] 
+            end
+
             if tech == "ElectricStorage"
                 # Existing logic for Electric Storage
-                new_data = d[tech]["storage_to_load_series_kw"]
+                new_data = d[tech][1]["storage_to_load_series_kw"]
+                # println(new_data) 
                 if isempty(new_data)
+                    # println("Data is empty")
                     continue
                 end
                 ### Battery SOC line plot
                 push!(traces, scatter(
                     name = "Battery State of Charge",
                     x = dr_v,
-                    y = d["ElectricStorage"]["soc_series_fraction"]*100,
+                    y = d["ElectricStorage"][1]["soc_series_fraction"] * 100,
                     yaxis="y2",
                     line = attr(
                     dash= "dashdot",
@@ -188,10 +197,18 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                         side = "right",
 						range = [0, 100]
                     ))
-            elseif tech == "PV" || tech == "Wind"  # Special handling for PV and Wind
+
+            elseif tech == "PV" || tech == "Wind"
                 for (idx, instance) in enumerate(d[tech])
+                    # Now instance will always be a Dict{String, Any}, not a Pair{String, Any}
                     new_data = instance["electric_to_load_series_kw"]
                     instance_name = get(instance, "name", tech)
+                    # Only append instance_name if it's different from tech
+                    full_name = tech
+
+                    if instance_name != tech
+                        full_name *= '-' * instance_name
+                    end
 
                     if length(d[tech]) > 1
                         if idx == 1
@@ -219,7 +236,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 
                         # Plot each instance
                         push!(traces, scatter(
-                            name = tech*'-'*instance_name * " Serving Load",
+                            name = full_name * " Serving Load",
                             x = dr_v,
                             y = cumulative_data,
                             mode = "lines",
@@ -227,35 +244,38 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                             line = attr(width=0, color = color_to_use)
                         ))
                     end
+                    # After plotting, set the flag to true
+                    already_plotted = true
                 end
+
             else
-                new_data = d[tech]["electric_to_load_series_kw"]
+                new_data = d[tech][1]["electric_to_load_series_kw"]
+            end
                 
-                if any(x -> x > 0, new_data)
-                    # Invisible line for plotting
-                    push!(traces, scatter(
-                        name = "invisible",
-                        x = dr_v,
-                        y = cumulative_data,
-                        mode = "lines",
-                        fill = Nothing,
-                        line = attr(width = 0),
-                        showlegend = false,
-                        hoverinfo = "skip"
-                    ))
+            if !already_plotted && any(x -> x > 0, new_data)
+                # Invisible line for plotting
+                push!(traces, scatter(
+                    name = "invisible",
+                    x = dr_v,
+                    y = cumulative_data,
+                    mode = "lines",
+                    fill = Nothing,
+                    line = attr(width = 0),
+                    showlegend = false,
+                    hoverinfo = "skip"
+                ))
 
-                    cumulative_data = cumulative_data .+ new_data
+                cumulative_data = cumulative_data .+ new_data
 
-                    # Plot each technology
-                    push!(traces, scatter(
-                        name = tech * " Serving Load",
-                        x = dr_v,
-                        y = cumulative_data,
-                        mode = "lines",
-                        fill = "tonexty",
-                        line = attr(width=0, color = tech_color_dict[tech])
-                    ))
-                end
+                # Plot each technology
+                push!(traces, scatter(
+                    name = tech * " Serving Load",
+                    x = dr_v,
+                    y = cumulative_data,
+                    mode = "lines",
+                    fill = "tonexty",
+                    line = attr(width=0, color = tech_color_dict[tech])
+                ))
             end
         end
     end
@@ -263,22 +283,32 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
     ########################### Net Metering Enabled ################
     for tech in tech_names
         if haskey(d, tech)
-            if tech == "PV" || tech == "Wind"  # Special handling for PV and Wind
+
+            # Check the type of d[tech]
+            if typeof(d[tech]) == Dict{String, Any}
+                d[tech] = [d[tech]]  # If it's a single dictionary, convert it to an array containing that dictionary
+            end
+
+            if tech == "PV" || tech == "Wind"  # Special handling for net metering PV and Wind, can add additional like this || tech == "CHP"
                 for (idx, instance) in enumerate(d[tech])
                     new_data = instance["electric_to_grid_series_kw"]
                     instance_name = get(instance, "name", tech)  # Default to 'tech' if 'name' is not present
-
+                    # Only append instance_name if it's different from tech
+                    full_name = tech
+                    if instance_name != tech
+                        full_name *= '-' * instance_name
+                    end
                     if length(d[tech]) > 1  # Multiple instances
                         if idx == 1  # First instance, use base color
-                            color_to_use = tech_color_dict[tech]
+                            color_to_use = net_tech_color_dict[tech]
                         else  # Other instances, use gradient
                             if idx == 2  # Generate gradient colors only when you reach the second instance
-                                gradient_colors = generate_gradient(tech_color_dict[tech], length(d[tech]) - 1)  # One fewer than the number of instances
+                                gradient_colors = generate_gradient(net_tech_color_dict[tech], length(d[tech]) - 1)  # One fewer than the number of instances
                             end
                             color_to_use = gradient_colors[idx - 1]  # Use idx - 1 because gradient starts from the second instance
                         end
                     else  # Single instance
-                        color_to_use = tech_color_dict[tech]
+                        color_to_use = net_tech_color_dict[tech]
                     end
 
                     if any(x -> x > 0, new_data)
@@ -298,7 +328,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 
                         # Plot each instance exporting to the grid
                         push!(traces, scatter(
-                            name = tech*'-'*instance_name * " Exporting to Grid (NEM)",
+                            name = full_name * " Exporting to Grid (NEM)",
                             x = dr_v,
                             y = cumulative_data,
                             mode = "lines",
