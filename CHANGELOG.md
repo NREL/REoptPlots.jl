@@ -1,5 +1,9 @@
 # REoptPlots Changelog
 
+## v0.1.7
+### Added
+    -Fixed export colors for NEM
+
 ## v0.1.6
 ### Added
     -Bug fix allowing it to handle multiple pvs and single pv
