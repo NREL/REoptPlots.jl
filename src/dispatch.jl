@@ -54,7 +54,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 		elseif length(arr) ==   35040
 		       interval     =   Dates.Minute(15)
 		else
-			error("Time interval length must be either 8760, 17520, or 35040")
+			error("Time interval length for one full year must be either 8760 (1-hour), 17520 (30-minutes), or 35040 (15-minutes)")
 		end
 		return interval
 	end
@@ -159,7 +159,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                 end
                 ### Battery SOC line plot
                 push!(traces, scatter(
-                    name = "Battery State of Charge",
+                    name = tech * " State of Charge",
                     x = dr_v,
                     y = d["ElectricStorage"][1]["soc_series_fraction"] * 100,
                     yaxis="y2",
@@ -171,7 +171,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                         color="rgb(100,100,100)"
                     ),
                 ))
-                push!(dispatch_data,["Battery State of Charge",new_data])
+                push!(dispatch_data,[tech * " State of Charge",new_data])
                 layout = Layout(
 					hovermode="closest",
 					hoverlabel_align="left",
