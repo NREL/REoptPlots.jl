@@ -131,7 +131,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 
     tech_color_dict     = Dict("PV" => "#ffbb00", "ElectricStorage" => "#e604b3", "Generator" => "#ff552b", "Wind" => "#70ce57", "CHP" => "#33783f", "GHP" => "#52e9e6")
     tech_names  	    = ["PV","ElectricStorage","Generator","Wind","CHP","GHP"]
-    net_tech_color_dict = Dict("PV" => "#5a1b00", "Wind" => "#003a00")
+    net_tech_color_dict = Dict("PV" => "#5a1b00", "Wind" => "#003a00", "CHP"=>"#FAEA52")
     gradient_colors     = []
     gradient_net_colors = []
     #Plot every existing technology
@@ -292,7 +292,7 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
                 d[tech] = [d[tech]]  # If it's a single dictionary, convert it to an array containing that dictionary
             end
 
-            if tech == "PV" || tech == "Wind"  # Special handling for net metering PV and Wind, can add additional like this || tech == "CHP"
+            if tech == "PV" || tech == "Wind" || tech == "CHP" # Special handling for net metering PV and Wind, can add additional like this || tech == "CHP"
                 for (idx, instance) in enumerate(d[tech])
                     new_data = instance["electric_to_grid_series_kw"]
                     instance_name = get(instance, "name", tech)  # Default to 'tech' if 'name' is not present
@@ -331,14 +331,14 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 
                         # Plot each instance exporting to the grid
                         push!(traces, scatter(
-                            name = full_name * " Exporting to Grid (NEM)",
+                            name = full_name * " Exporting to Grid",
                             x = dr_v,
                             y = cumulative_data,
                             mode = "lines",
                             fill = "tonexty",
                             line = attr(width=0, color = color_to_use)
                         ))
-                        push!(dispatch_data,[full_name * " Exporting to Grid (NEM)",new_data])
+                        push!(dispatch_data,[full_name * " Exporting to Grid",new_data])
                     end
                 end
             end
