@@ -75,8 +75,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         "electric_curtailed_series_kw" => "cadetblue1"
     )
     colors["CHP"] = Dict(
-        "electric_to_grid_series_kw" => "lightgoldenrod1"
-        "electric_to_storage_series_kw" => "orange"
+        "electric_to_grid_series_kw" => "lightgoldenrod1",
+        "electric_to_storage_series_kw" => "orange",
         "electric_to_load_series_kw" => "darkorange2"
 
     )
