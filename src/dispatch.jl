@@ -42,7 +42,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         xaxis_title = "",
         yaxis_title = "Power (kW)",
         xaxis_rangeslider_visible=true,
-        legend=attr(x=1.07, y=0.5, font=attr(size=14,color="black")))
+        legend=attr(x=1.17, y=0.5, font=attr(size=14,color="black")))
     
     tech_names  = ["ElectricUtility", "PV", "ElectricStorage", "Generator", "Wind", "CHP", "GHP"]
     eload = d["ElectricLoad"]["load_series_kw"]
@@ -51,17 +51,17 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     # Colors for dispatch plot
     colors = Dict()
     colors["ElectricUtility"] = Dict(
-        "electric_to_load_series_kw" => "lightgrey",
-        "electric_to_storage_series_kw" => "darkgrey"
+        "electric_to_load_series_kw" => "#434746",
+        "electric_to_storage_series_kw" => "#5C6B64"
     )
     colors["PV"] = Dict(
-        "electric_to_load_series_kw" => "darkred",
-        "electric_to_grid_series_kw" => "coral",
-        "electric_to_storage_series_kw" => "lightsalmon",
-        "electric_curtailed_series_kw" => "goldenrod"
+        "electric_to_load_series_kw" => "#FA8F3D",
+        "electric_to_grid_series_kw" => "#FA6C52",
+        "electric_to_storage_series_kw" => "#F95994",
+        "electric_curtailed_series_kw" => "#FAB952"
     )
     colors["ElectricStorage"] = Dict(
-        "storage_to_load_series_kw" => "yellow",
+        "storage_to_load_series_kw" => "#003A00",
     )
     colors["Generator"] = Dict(
         "electric_to_load_series_kw" => "rebeccapurple",
@@ -197,7 +197,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             xaxis_title = "",
             yaxis_title = "Power (kW)",
             xaxis_rangeslider_visible=true,
-            legend=attr(x=1.07, y=0.5, 
+            legend=attr(x=1.17, y=0.5, 
                         font=attr(
                         size=14,
                         color="black")
