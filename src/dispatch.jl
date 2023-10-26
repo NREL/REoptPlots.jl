@@ -74,7 +74,13 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         "electric_to_storage_series_kw" => "deepskyblue3",
         "electric_curtailed_series_kw" => "cadetblue1"
     )
-    # TODO: add CHP and GHP to colors 
+    colors["CHP"] = Dict(
+        "electric_to_grid_series_kw" => "lightgoldenrod1"
+        "electric_to_storage_series_kw" => "orange"
+        "electric_to_load_series_kw" => "darkorange2"
+
+    )
+    # TODO: add GHP to colors 
 
     # Define the start and end time for the date and time array
     start_time = DateTime(year, 1, 1, 0, 0, 0)
