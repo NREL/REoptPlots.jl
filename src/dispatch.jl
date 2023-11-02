@@ -27,7 +27,7 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false, year=2017)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false, show_soc=false, year=2017)
     
     traces = GenericTrace[]
     layout = Layout(
@@ -169,44 +169,46 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     ))
 
     if haskey(d, "ElectricStorage")
-        ### Battery SOC line plot
-        push!(traces, scatter(
-            name = "Battery State of Charge",
-            x = dr_v,
-            y = d["ElectricStorage"]["soc_series_fraction"]*100,
-            yaxis="y2",
-            line = attr(
-            dash= "dashdot",
-            width = 1
-            ),
-            marker = attr(
-                color="rgb(100,100,100)"
-            ),
-        ))
-
-        layout = Layout(
-            hovermode="closest",
-            hoverlabel_align="left",
-            plot_bgcolor="white",
-            paper_bgcolor="white",
-            font_size=18,
-            xaxis=attr(showline=true, ticks="outside", showgrid=false,
-                linewidth=1.5, zeroline=false),
-            yaxis=attr(showline=true, ticks="outside", showgrid=false,
-                linewidth=1.5, zeroline=false),
-            xaxis_title = "",
-            yaxis_title = "Power (kW)",
-            xaxis_rangeslider_visible=true,
-            legend=attr(x=1.17, y=0.5, 
-                        font=attr(
-                        size=14,
-                        color="black")
-                        ),
-            yaxis2 = attr(
-                title = "State of Charge (Percent)",
-                overlaying = "y",
-                side = "right"
+        if show_soc
+            ### Battery SOC line plot
+            push!(traces, scatter(
+                name = "Battery State of Charge",
+                x = dr_v,
+                y = d["ElectricStorage"]["soc_series_fraction"]*100,
+                yaxis="y2",
+                line = attr(
+                dash= "dashdot",
+                width = 1
+                ),
+                marker = attr(
+                    color="rgb(100,100,100)"
+                ),
             ))
+
+            layout = Layout(
+                hovermode="closest",
+                hoverlabel_align="left",
+                plot_bgcolor="white",
+                paper_bgcolor="white",
+                font_size=18,
+                xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                    linewidth=1.5, zeroline=false),
+                yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                    linewidth=1.5, zeroline=false),
+                xaxis_title = "",
+                yaxis_title = "Power (kW)",
+                xaxis_rangeslider_visible=true,
+                legend=attr(x=1.17, y=0.5, 
+                            font=attr(
+                            size=14,
+                            color="black")
+                            ),
+                yaxis2 = attr(
+                    title = "State of Charge (Percent)",
+                    overlaying = "y",
+                    side = "right"
+                ))
+        end
 
     end
 
@@ -256,7 +258,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                                 end
                                 
                                 push!(traces, scatter(;
-                                    name = tech*i* " "*txt,
+                                    name = tech* "$(i) "*txt,
                                     x = dr_v,
                                     y = cumulative_data,
                                     mode = "lines",
