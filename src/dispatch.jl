@@ -219,47 +219,96 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                 if tech == "ElectricUtility" && key == "electric_to_load_series_kw"
                     continue
                 else
-                    sub_dict = d[tech]
-                    if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
+                    # check for multiple PVs
+                    if tech == "PV" && length(d[tech]) > 1
+                        for i in range(1,length(d[tech]))
+                            sub_dict = d[tech][1]
+                            if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
+                                    
+                                #invisble line for plotting
+                                push!(traces, scatter(
+                                    name = "invisible",			
+                                    x = dr_v,
+                                    y = cumulative_data,
+                                    mode = "lines",
+                                    fill = Nothing,
+                                    line = attr(width = 0),
+                                    showlegend = false,
+                                    hoverinfo = "skip",
+                                )) 
+    
+                                new_data = sub_dict[key] 
+                                cumulative_data = cumulative_data .+ new_data
+    
+                                if contains(key, "to_load")
+                                    txt = "Serving Load"
+                                elseif contains(key, "to_grid")
+                                    txt = "Export to Grid"
+                                elseif contains(key, "to_storage")
+                                    txt = "Charging Storage"
+                                elseif contains(key, "curtailed")
+                                    txt = "Curtailed"
+                                end
+    
+                                tech_name = tech
+                                if tech == "ElectricUtility"
+                                    tech_name = "Grid"
+                                end
                                 
-                        #invisble line for plotting
-                        push!(traces, scatter(
-                            name = "invisible",			
-                            x = dr_v,
-                            y = cumulative_data,
-                            mode = "lines",
-                            fill = Nothing,
-                            line = attr(width = 0),
-                            showlegend = false,
-                            hoverinfo = "skip",
-                        )) 
-
-                        new_data = sub_dict[key] 
-                        cumulative_data = cumulative_data .+ new_data
-
-                        if contains(key, "to_load")
-                            txt = "Serving Load"
-                        elseif contains(key, "to_grid")
-                            txt = "Export to Grid"
-                        elseif contains(key, "to_storage")
-                            txt = "Charging Storage"
-                        elseif contains(key, "curtailed")
-                            txt = "Curtailed"
+                                push!(traces, scatter(;
+                                    name = tech*i* " "*txt,
+                                    x = dr_v,
+                                    y = cumulative_data,
+                                    mode = "lines",
+                                    fill = "tonexty",
+                                    line = attr(width=0, color = colors[tech][key])
+                                ))   
+                            end
                         end
 
-                        tech_name = tech
-                        if tech == "ElectricUtility"
-                            tech_name = "Grid"
+                    else
+                        sub_dict = d[tech]
+                        if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
+                                    
+                            #invisble line for plotting
+                            push!(traces, scatter(
+                                name = "invisible",			
+                                x = dr_v,
+                                y = cumulative_data,
+                                mode = "lines",
+                                fill = Nothing,
+                                line = attr(width = 0),
+                                showlegend = false,
+                                hoverinfo = "skip",
+                            )) 
+
+                            new_data = sub_dict[key] 
+                            cumulative_data = cumulative_data .+ new_data
+
+                            if contains(key, "to_load")
+                                txt = "Serving Load"
+                            elseif contains(key, "to_grid")
+                                txt = "Export to Grid"
+                            elseif contains(key, "to_storage")
+                                txt = "Charging Storage"
+                            elseif contains(key, "curtailed")
+                                txt = "Curtailed"
+                            end
+
+                            tech_name = tech
+                            if tech == "ElectricUtility"
+                                tech_name = "Grid"
+                            end
+                            
+                            push!(traces, scatter(;
+                                name = tech* " "*txt,
+                                x = dr_v,
+                                y = cumulative_data,
+                                mode = "lines",
+                                fill = "tonexty",
+                                line = attr(width=0, color = colors[tech][key])
+                            ))   
                         end
-                        
-                        push!(traces, scatter(;
-                            name = tech* " "*txt,
-                            x = dr_v,
-                            y = cumulative_data,
-                            mode = "lines",
-                            fill = "tonexty",
-                            line = attr(width=0, color = colors[tech][key])
-                        ))   
                     end
                 end
             end
