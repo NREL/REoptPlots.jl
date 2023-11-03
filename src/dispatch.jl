@@ -52,13 +52,13 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     colors = Dict()
     colors["ElectricUtility"] = Dict(
         "electric_to_load_series_kw" => "#434746",
-        "electric_to_storage_series_kw" => "#5C6B64"
+        "electric_to_storage_series_kw" => "#5C6BB3"
     )
     colors["PV"] = Dict(
-        "electric_to_load_series_kw" => "#FA8F3D",
-        "electric_to_grid_series_kw" => "#FA6C52",
-        "electric_to_storage_series_kw" => "#F95994",
-        "electric_curtailed_series_kw" => "#FAB952"
+        "electric_to_load_series_kw" => "RGBA(255, 89, 0, 1.0)", # Dark orange
+        "electric_to_grid_series_kw" => "RGBA(255, 108, 82, 1.0)",
+        "electric_to_storage_series_kw" => "RGBA(249, 108, 82, 1.0)",
+        "electric_curtailed_series_kw" => "RGBA(255, 190, 84, 1.0)"
     )
     colors["ElectricStorage"] = Dict(
         "storage_to_load_series_kw" => "#003A00",
@@ -154,7 +154,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         x = dr_v,
         y = d["ElectricLoad"]["load_series_kw"],
         mode = "lines",
-        fill = "none",
+        fill = nothing,
         line=attr(width=1, color="black")
     ))
 
@@ -224,7 +224,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                     # check for multiple PVs
                     if tech == "PV" && length(d[tech]) > 1
                         for i in range(1,length(d[tech]))
-                            sub_dict = d[tech][1]
+                            sub_dict = d[tech][i]
                             if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
                                     
                                 #invisble line for plotting
@@ -233,7 +233,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                                     x = dr_v,
                                     y = cumulative_data,
                                     mode = "lines",
-                                    fill = Nothing,
+                                    fill = nothing,
                                     line = attr(width = 0),
                                     showlegend = false,
                                     hoverinfo = "skip",
@@ -257,13 +257,17 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                                     tech_name = "Grid"
                                 end
                                 
+                                c = colors[tech][key]
+                                grad = parse(Float64,split(c,",")[4][2:4]) - 0.1 * (i-1)
+                                colorpv = join(split(c,",")[1:3],",")*", $(grad))"
+
                                 push!(traces, scatter(;
                                     name = tech* "$(i) "*txt,
                                     x = dr_v,
                                     y = cumulative_data,
                                     mode = "lines",
                                     fill = "tonexty",
-                                    line = attr(width=0, color = colors[tech][key])
+                                    line = attr(width=0, color = colorpv) # parse(Float64,a[18:20]) - 0.2
                                 ))   
                             end
                         end
@@ -278,7 +282,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                                 x = dr_v,
                                 y = cumulative_data,
                                 mode = "lines",
-                                fill = Nothing,
+                                fill = nothing,
                                 line = attr(width = 0),
                                 showlegend = false,
                                 hoverinfo = "skip",
