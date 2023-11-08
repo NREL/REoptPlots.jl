@@ -57,8 +57,8 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     colors["PV"] = Dict(
         "electric_to_load_series_kw" => "RGBA(255, 89, 0, 1.0)", # Dark orange
         "electric_to_grid_series_kw" => "RGBA(255, 108, 82, 1.0)",
-        "electric_to_storage_series_kw" => "RGBA(249, 108, 82, 1.0)",
-        "electric_curtailed_series_kw" => "RGBA(255, 190, 84, 1.0)"
+        "electric_to_storage_series_kw" => "RGBA(212, 23, 155, 1.0)",
+        "electric_curtailed_series_kw" => "RGBA(270, 108, 82, 1.0)"
     )
     colors["ElectricStorage"] = Dict(
         "storage_to_load_series_kw" => "#003A00",
