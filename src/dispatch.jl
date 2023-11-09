@@ -27,7 +27,8 @@
 # OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 # *********************************************************************************
-function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false, show_soc=false, year=2017)
+function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save_html=false, display_stats=false, show_soc=false, year=2017, 
+    other_timeseries::Array{<:Real,1} = Real[], other_timeseries_name::String = "", other_timeseries_units::String = "")
     
     traces = GenericTrace[]
     layout = Layout(
@@ -75,7 +76,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         "electric_curtailed_series_kw" => "cadetblue1"
     )
     colors["CHP"] = Dict(
-        "electric_to_grid_series_kw" => "lightgoldenrod1",
+        "electric_to_grid_series_kw" => "RGBA(57, 254, 255, 1.0)",
         "electric_to_storage_series_kw" => "orange",
         "electric_to_load_series_kw" => "darkorange2"
 
@@ -167,6 +168,46 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         fill = "tozeroy",
         line = attr(width=0, color=colors["ElectricUtility"]["electric_to_load_series_kw"])
     ))
+
+    if !show_soc && length(other_timeseries) > 0
+        push!(traces, scatter(
+                name = other_timeseries_name,
+                x = dr_v,
+                y = other_timeseries,
+                yaxis="y2",
+                line = attr(
+                    dash= "dashdot",
+                    width = 1
+                ),
+                marker = attr(
+                    color="rgb(100,100,100)"
+                ),
+            )
+        )
+        layout = Layout(
+            hovermode="closest",
+            hoverlabel_align="left",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font_size=18,
+            xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                linewidth=1.5, zeroline=false),
+            yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                linewidth=1.5, zeroline=false),
+            xaxis_title = "",
+            yaxis_title = "Power (kW)",
+            xaxis_rangeslider_visible=true,
+            legend=attr(x=1.17, y=0.5, 
+                        font=attr(
+                        size=14,
+                        color="black")
+                        ),
+            yaxis2 = attr(
+                title = other_timeseries_units,
+                overlaying = "y",
+                side = "right"
+            ))
+    end
 
     if haskey(d, "ElectricStorage")
         if show_soc
