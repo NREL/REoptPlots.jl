@@ -209,7 +209,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
             ))
     end
 
-    if haskey(d, "ElectricStorage")
+    if haskey(d, "ElectricStorage") && d["ElectricStorage"]["size_kw"] > 0.0
         if show_soc
             ### Battery SOC line plot
             push!(traces, scatter(
@@ -315,7 +315,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
                     else
                         sub_dict = d[tech]
-                        if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
+                        if haskey(sub_dict, key) && !isempty(sub_dict[key]) && sum(sub_dict[key]) != 0.0
                                     
                             #invisble line for plotting
                             push!(traces, scatter(
