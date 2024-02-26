@@ -1,6 +1,6 @@
 module REoptPlots
 
-using PlotlyJS
+using PlotlyLight
 using DataFrames
 using Statistics
 using Dates
