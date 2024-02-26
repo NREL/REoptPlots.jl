@@ -478,6 +478,13 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
         end
     end
 
+    if haskey(d, "ElectricStorage")
+        if d["ElectricStorage"]["size_kw"] == 0.0
+            d["ElectricStorage"]["soc_series_fraction"] = zeros(length(daterange))
+            d["ElectricStorage"]["storage_to_load_series_kw"] = zeros(length(daterange))
+        end
+    end
+
     p = (
         plot.scatter(;
             x = daterange[start_idx:end_idx],
