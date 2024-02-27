@@ -598,3 +598,29 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
 
     nothing
 end
+
+"""
+Generates heatmap of any provided vector.
+"""
+function generate_heatmap(vec::Vector, title::String; filename = "heatmap", save_html=false, yr=2022)
+    timesteps = Int(24*length(vec)/8760)
+
+    ylabels = DateTime(yr,1,1):Dates.Minute(Int(60/(length(vec)/8760))):DateTime(yr,1,1,23,59)
+    xlabels = Date(yr,1,1):Day(1):Date(yr,12,31)
+
+    arr = [reshape(vec, (:,365))[i,:] for i in 1:timesteps]
+    
+    p = plot.heatmap(
+        z = arr,
+        x = collect(xlabels),
+        y = string.(hour.(ylabels),":", minute.(ylabels)),
+    )
+    
+    p.layout.title.text = title
+    p.layout.xaxis.title.text = "Date"
+    p.layout.yaxis.title.text = "Time of day"
+
+    if save_html
+        PlotlyLight.save(p, string(filename, ".html"))
+    end
+end
