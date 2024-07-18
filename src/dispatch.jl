@@ -263,7 +263,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                     continue
                 else
                     # check for multiple PVs
-                    if tech == "PV" && length(d[tech]) > 1
+                    if tech == "PV" && !isa(d[tech], Dict)
                         for i in range(1,length(d[tech]))
                             sub_dict = d[tech][i]
                             if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
