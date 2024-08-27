@@ -463,18 +463,20 @@ function plot_electric_dispatch(d::Dict; title ="Electric Systems Dispatch", sav
     pv_to_batt_charge = zeros(length(daterange))
     pv_to_curtailment = zeros(length(daterange))
 
-    if typeof(d["PV"]) <: Dict
-        pv_to_load = d["PV"]["electric_to_load_series_kw"]
-        pv_to_grid_export = d["PV"]["electric_to_grid_series_kw"]
-        pv_to_batt_charge = d["PV"]["electric_to_storage_series_kw"]
-        pv_to_curtailment = d["PV"]["electric_curtailed_series_kw"]
-    else
-        # PV is a vector.
-        for pv in d["PV"]
-            pv_to_load .+= pv["electric_to_load_series_kw"]
-            pv_to_grid_export .+= pv["electric_to_grid_series_kw"]
-            pv_to_batt_charge .+= pv["electric_to_storage_series_kw"]
-            pv_to_curtailment .+= pv["electric_curtailed_series_kw"]
+    if haskey(d, "PV")
+        if typeof(d["PV"]) <: Dict
+            pv_to_load = d["PV"]["electric_to_load_series_kw"]
+            pv_to_grid_export = d["PV"]["electric_to_grid_series_kw"]
+            pv_to_batt_charge = d["PV"]["electric_to_storage_series_kw"]
+            pv_to_curtailment = d["PV"]["electric_curtailed_series_kw"]
+        else
+            # PV is a vector.
+            for pv in d["PV"]
+                pv_to_load .+= pv["electric_to_load_series_kw"]
+                pv_to_grid_export .+= pv["electric_to_grid_series_kw"]
+                pv_to_batt_charge .+= pv["electric_to_storage_series_kw"]
+                pv_to_curtailment .+= pv["electric_curtailed_series_kw"]
+            end
         end
     end
 
