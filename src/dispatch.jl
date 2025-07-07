@@ -47,7 +47,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     
     tech_names  = ["ElectricUtility", "PV", "ElectricStorage", "Generator", "Wind", "CHP", "GHP"]
     eload = d["ElectricLoad"]["load_series_kw"]
-    keys = ["storage_to_load_series_kw", "electric_to_load_series_kw", "electric_to_grid_series_kw", "electric_to_storage_series_kw", "electric_curtailed_series_kw"]
+    keys = ["storage_to_load_series_kw", "storage_to_grid_series_kw", "electric_to_load_series_kw", "electric_to_grid_series_kw", "electric_to_storage_series_kw", "electric_curtailed_series_kw"]
 
     # Colors for dispatch plot
     colors = Dict()
@@ -63,6 +63,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     )
     colors["ElectricStorage"] = Dict(
         "storage_to_load_series_kw" => "#003A00",
+        "storage_to_grid_series_kw" => "#81A41C"
     )
     colors["Generator"] = Dict(
         "electric_to_load_series_kw" => "rebeccapurple",
