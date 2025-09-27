@@ -45,10 +45,18 @@ data_dictionary_for_plots = Dict([
 ])
 =#
 
+using Plots, JuMP
+
 function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard)
 
-    # Generate warnings or errors for improper inputs into the multinode plotting function
+    # Extract some information from the inputs dictionary
+    Multinode_Inputs = data_dictionary_for_plots["Multinode_Inputs"]
+    DataDictionaryForEachNode = data_dictionary_for_plots["DataDictionaryForEachNode"]
+    TimeStamp = data_dictionary_for_plots["TimeStamp"]
+    CompiledResults = data_dictionary_for_plots["CompiledResults"]
 
+
+    # Generate warnings or errors for improper inputs into the multinode plotting function
     if Multinode_Inputs.number_of_plots_from_outage_simulator > Multinode_Inputs.number_of_outages_to_simulate
         @warn("In the Multinode_Inputs dictionary, the number_of_plots_from_outage_simulator is larger than the number_of_outages_to_simulate, so fewer plots than indicated by number_of_plots_from_outage_simulator will be generated.")
     end
@@ -70,35 +78,34 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
         throw(@error("The entries in the time_steps_for_results_dashboard array should not by less than 1"))
     end
 
-    if Multinode_Inputs.voltage_plot_time_step > length(Multinode_Inputs.PMD_time_steps)
+    if data_dictionary_for_plots["voltage_plot_time_step"] > length(Multinode_Inputs.PMD_time_steps)
         throw(@error("In the Multinode_Inputs dictionary, the voltage_plot_time_step should be less than or equal to the number of timesteps in PMD_time_steps"))
     end
 
     # Create a folder for the results
-    folder = filepath_for_saving_plots*"/plots_$(TimeStamp)"
+    folder = filepath_for_saving_plots*"/plots_"*TimeStamp
     mkdir(folder)
 
-    # Extract some information from the inputs dictionary
-    Multinode_Inputs = data_dictionary_for_plots["Multinode_Inputs"]
-    DataDictionaryForEachNode = data_dictionary_for_plots["DataDictionaryForEachNode"]
-    TimeStamp = data_dictionary_for_plots["TimeStamp"]
-    CompiledResults = data_dictionary_for_plots["CompiledResults"]
 
     # Plot outage simulator results if the outage simulator was run
     if Multinode_Inputs.run_outage_simulator
         mkdir(folder*"/Outage_Simulation_Plots")
+
         for y in collect(keys(data_dictionary_for_plots["outage_simulator_results_for_plotting"]))
             
             MapOutageSimulatorResultsPlots(Multinode_Inputs, 
-                                        data_dictionary_for_plots["outage_survival_results"], 
-                                        data_dictionary_for_plots["outage_start_timesteps_checked"], 
+                                        data_dictionary_for_plots["outage_survival_results"][y], 
+                                        data_dictionary_for_plots["outage_start_timesteps_checked"][y], 
                                         data_dictionary_for_plots["TimeStamp"], 
-                                        data_dictionary_for_plots["OutageLength_TimeSteps_Input"],
+                                        y,
                                         folder)
             
-            for z in collect(keys(data_dictionary_for_plots["outage_simulator_results_for_plotting"][y]))
+            values = collect(keys(data_dictionary_for_plots["outage_simulator_results_for_plotting"][y]))
+            run_values = filter(x-> x isa Int, values)
+            
+            for z in run_values
                 data = data_dictionary_for_plots["outage_simulator_results_for_plotting"][y][z]
-
+                print("\n making plots for $(y),$(z)")
                 m_outagesimulator = data["model"]
                 NodeList = data["NodeList"]
                 x = data["x"]
@@ -113,7 +120,7 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
 
     # Create a voltage plot
     if Multinode_Inputs.number_of_phases == 1
-        REoptPlots.Create_Voltage_Plot(CompiledResults, TimeStamp, Multinode_Inputs.voltage_plot_time_step, folder)
+        REoptPlots.Create_Voltage_Plot(CompiledResults, TimeStamp, data_dictionary_for_plots["voltage_plot_time_step"], folder)
     else
         @info "The creation of the voltage plots is currently only applicable for single phase systems"
     end
@@ -132,9 +139,9 @@ end
 
 function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder)
 
-    bus_key_values, line_key_values, bus_cords, line_cords, busses = CollectMapInformation(results, Multinode_Inputs) 
+    bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs) 
 
-    results_by_node = CollectResultsByNode(results, busses)
+    results_by_node = REopt.CollectResultsByNode(results, busses)
 
     traces = PlotlyJS.GenericTrace[] # initiate the vector as a vector of PlotlyJS traces
 
@@ -176,16 +183,15 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder)
     p = PlotlyJS.plot(traces,layout)
     PlotlyJS.savefig(p, folder*"/Results_and_Layout.html")
 
-    if Multinode_Inputs.display_results
-        display(p)
-    end
+    #display(p)
+    
 end
 
 
 function Create_Voltage_Plot(results, TimeStamp, voltage_plot_time_step, folder; file_suffix="")
     Multinode_Inputs = results["Multinode_Inputs"]
     # Generate list of lengths from the node to the substation
-    DistancesToSourcebus, lengths_dict, paths_dict, paths, neighbors = DetermineDistanceFromSourcebus(Multinode_Inputs, results["PMD_data_eng"])
+    DistancesToSourcebus, lengths_dict, paths_dict, paths, neighbors = REopt.DetermineDistanceFromSourcebus(Multinode_Inputs, results["PMD_data_eng"])
 
     # Determine the per unit voltage at each node
     timestep = voltage_plot_time_step
@@ -224,9 +230,9 @@ function Create_Voltage_Plot(results, TimeStamp, voltage_plot_time_step, folder;
 
     p = PlotlyJS.plot(traces, layout)
     PlotlyJS.savefig(p, folder*"/VoltagePlot_InteractivePlot"*file_suffix*".html")
-    if Multinode_Inputs.display_results
-        display(p)
-    end
+    
+    #display(p)
+    
 end
 
 
@@ -326,10 +332,8 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
         Plots.xlims!(0,7*Multinode_Inputs.time_steps_per_hour) # Show the first week of results
     end
 
-    if Multinode_Inputs.display_results
-        display(Plots.title!("System Wide Power Demand and Generation"))
-    end
-
+    Plots.title!("System Wide Power Demand and Generation")
+    
     # Interactive plot using PlotlyJS
     traces = PlotlyJS.GenericTrace[]
     layout = PlotlyJS.Layout(title_text = "System Wide Power Demand and Generation", xaxis_title_text = "Day", yaxis_title_text = "Power (kW)")
@@ -443,9 +447,9 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
 
     p = PlotlyJS.plot(traces, layout)
     PlotlyJS.savefig(p, folder*"/CombinedResults_PowerOutput_InteractivePlot.html")
-    if Multinode_Inputs.display_results
-        display(p)
-    end
+    
+    #display(p)
+    
 end
  
 
@@ -453,8 +457,8 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     # This function plots the power flows through the network
 
     Multinode_Inputs = results["Multinode_Inputs"]
-    bus_key_values, line_key_values, bus_cords, line_cords, busses, substation_cords = CollectMapInformation(results, Multinode_Inputs) 
-    results_by_node = CollectResultsByNode(results, busses)
+    bus_key_values, line_key_values, bus_cords, line_cords, busses, substation_cords = REopt.CollectMapInformation(results, Multinode_Inputs) 
+    results_by_node = REopt.CollectResultsByNode(results, busses)
 
     Multinode_Inputs.display_information_during_modeling_run ? print("\n The substation coordinates are: $(substation_cords)") : nothing
 
@@ -755,59 +759,56 @@ end
 function CreatePlotsForOutageSimulatorModel(Multinode_Inputs, m_outagesimulator, DataDictionaryForEachNode, OutageLength_TimeSteps_Input, TimeStamp, TotalTimeSteps, NodeList, x, i, folder)
     # This function makes plots for each of the REopt nodes
     
-    mkdir(Multinode_Inputs.folder_location*"/results_"*TimeStamp*"/Outage_Simulation_Plots/OutageTimeStepsLength_$(OutageLength_TimeSteps_Input)_Simulation_Run_$(x)")
+    mkdir(folder*"/Outage_Simulation_Plots/OutageTimeStepsLength_$(OutageLength_TimeSteps_Input)_Simulation_Run_$(x)")
     
     for n in NodeList
-        Plots.plot(value.(m_outagesimulator[Symbol("dvPVToLoad_"*n)]), label = "PV to Load", linewidth = 3)
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvGenToLoad_"*n)]), label = "Gen to Load", linewidth = 3)
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvBatToLoad_"*n)]), label = "Battery to Load", linewidth = 3)
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvBatToLoadWithEfficiency_"*n)]), label = "Battery to Load with Efficiency", linewidth = 3)
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvGridToLoad_"*n)]), label = "Grid to Load", linewidth = 3)
+        Plots.plot(JuMP.value.(m_outagesimulator[Symbol("dvPVToLoad_"*n)]), label = "PV to Load", linewidth = 3)
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvGenToLoad_"*n)]), label = "Gen to Load", linewidth = 3)
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvBatToLoad_"*n)]), label = "Battery to Load", linewidth = 3)
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvBatToLoadWithEfficiency_"*n)]), label = "Battery to Load with Efficiency", linewidth = 3)
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvGridToLoad_"*n)]), label = "Grid to Load", linewidth = 3)
         Plots.plot!(DataDictionaryForEachNode[n]["loads_kw"][i:(i+OutageLength_TimeSteps_Input-1)], label = "Total Load", linecolor = (:black), line = (:dash), linewidth = 3)
         Plots.xlabel!("Time Step") 
         Plots.ylabel!("Power (kW)") 
         Plots.title!("Node "*n*": Load Balance, outage timestep: "*string(i)*" of "*string(TotalTimeSteps))
-        if Multinode_Inputs.display_results
-            display(Plots.ylabel!("Power (kW)"))
-        end
+        Plots.ylabel!("Power (kW)")
         Plots.savefig(folder*"/Outage_Simulation_Plots/OutageTimeStepsLength_$(OutageLength_TimeSteps_Input)_Simulation_Run_$(x)/Node_$(n)_Timestep_$(i)_Load_Balance_"*TimeStamp*".png")
     end 
 
     # Plots results for each node during the outage
     for n in NodeList
         # Plot the power export
-        Plots.plot(value.(m_outagesimulator[Symbol("dvPVToGrid_"*n)]), label = "PV to Grid")
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvGenToGrid_"*n)]), label = "Gen to Grid")
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvBatToGrid_"*n)]), label = "Battery to Grid")
+        Plots.plot(JuMP.value.(m_outagesimulator[Symbol("dvPVToGrid_"*n)]), label = "PV to Grid")
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvGenToGrid_"*n)]), label = "Gen to Grid")
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvBatToGrid_"*n)]), label = "Battery to Grid")
         Plots.xlabel!("Time Step")
         Plots.ylabel!("Power (kW)")
         Plots.title!("Node "*n*": Power Export, outage timestep "*string(i)*" of "*string(TotalTimeSteps))
-        if Multinode_Inputs.display_results
-            display(Plots.ylabel!("Power (kW)"))
-        end
+        Plots.ylabel!("Power (kW)")
+        
         Plots.savefig(folder*"/Outage_Simulation_Plots/OutageTimeStepsLength_$(OutageLength_TimeSteps_Input)_Simulation_Run_$(x)/Node_$(n)_Timestep_$(i)_Power_Export_"*TimeStamp*".png")
     
         # Plot the battery flows
-        Plots.plot(-value.(m_outagesimulator[Symbol("dvBatToLoad_"*n)]), label = "Battery to Load")
-        Plots.plot!(-value.(m_outagesimulator[Symbol("dvBatToGrid_"*n)]), label = "Battery to Grid")
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvGridToBat_"*n)]), label = "Grid to Battery")
-        Plots.plot!(value.(m_outagesimulator[Symbol("dvPVToBat_"*n)]), label = "PV to Battery")
+        Plots.plot(-JuMP.value.(m_outagesimulator[Symbol("dvBatToLoad_"*n)]), label = "Battery to Load")
+        Plots.plot!(-JuMP.value.(m_outagesimulator[Symbol("dvBatToGrid_"*n)]), label = "Battery to Grid")
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvGridToBat_"*n)]), label = "Grid to Battery")
+        Plots.plot!(JuMP.value.(m_outagesimulator[Symbol("dvPVToBat_"*n)]), label = "PV to Battery")
         Plots.xlabel!("Time Step")
         Plots.ylabel!("Power (kW)")
         Plots.title!("Node "*n*": Battery Flows, outage "*string(i)*" of "*string(TotalTimeSteps))
-        if Multinode_Inputs.display_results
-            display(Plots.ylabel!("Power (kW)"))
-        end
+        
+            Plots.ylabel!("Power (kW)")
+       
         Plots.savefig(folder*"/Outage_Simulation_Plots/OutageTimeStepsLength_$(OutageLength_TimeSteps_Input)_Simulation_Run_$(x)/Node_$(n)_Timestep_$(i)_Battery_Flows_"*TimeStamp*".png")
     
         # Plot the battery charge:
-        Plots.plot(value.(m_outagesimulator[Symbol("BatteryCharge_"*n)]), label = "Battery Charge")
+        Plots.plot(JuMP.value.(m_outagesimulator[Symbol("BatteryCharge_"*n)]), label = "Battery Charge")
         Plots.xlabel!("Time Step")
         Plots.ylabel!("Charge (kWh)")
         Plots.title!("Node "*n*": Battery Charge, outage "*string(i)*" of "*string(TotalTimeSteps))
-        if Multinode_Inputs.display_results
-            display(Plots.ylabel!("Power (kW)"))
-        end
+        
+           Plots.ylabel!("Power (kW)")
+        
         Plots.savefig(folder*"/Outage_Simulation_Plots/OutageTimeStepsLength_$(OutageLength_TimeSteps_Input)_Simulation_Run_$(x)/Node_$(n)_Timestep_$(i)_Battery_Charge_"*TimeStamp*".png")
     end
 end
@@ -819,6 +820,8 @@ function MapOutageSimulatorResultsPlots(Multinode_Inputs, outage_survival_result
     indices_outage_survived = findall(x -> x==1, outage_survival_results) # Find indices of survived outages
     indices_outage_not_survived = findall(x -> x==0, outage_survival_results) # Find indices of non-survived outages
 
+    print("\n the indices_outage_survived is: $(indices_outage_survived)")
+    print("\n the outage_survival_results are: $(outage_survival_results)")
     outage_start_timesteps_survived = outage_start_timesteps[indices_outage_survived]
     outage_start_timesteps_not_survived = outage_start_timesteps[indices_outage_not_survived]
 
@@ -843,19 +846,16 @@ function MapOutageSimulatorResultsPlots(Multinode_Inputs, outage_survival_result
     layout = PlotlyJS.Layout(barmode="stack", title = "$(OutageLength_TimeSteps_Input) Time Step Outage: Distribution of Survival by time of day", xaxis_title = "Time of Day (hour)", yaxis_title="Count")
     p1 = PlotlyJS.plot(traces, layout)
     PlotlyJS.savefig(p1, folder*"/Outage_Simulation_Plots/Outage_Survival_Histogram_By_Time_Of_Day_$(OutageLength_TimeSteps_Input)_Timestep_Outage.html")
-    if Multinode_Inputs.display_results
-        display(p1)
-    end
-
+    #display(p1)
+    
     traces = PlotlyJS.GenericTrace[]
     push!(traces, PlotlyJS.histogram(x=day_of_year_survived, name="Survived", xbins_start=0, xbins_end=371, xbins_size=7))
     push!(traces, PlotlyJS.histogram(x=day_of_year_not_survived, name="Not Survived", xbins_start=0, xbins_end=371, xbins_size=7)) 
     layout = PlotlyJS.Layout(barmode="stack", title = "$(OutageLength_TimeSteps_Input) Time Step Outage: Distribution of Survival by day of year", xaxis_title = "Day of Year (binned in weekly intervals)", yaxis_title="Count")
     p2 = PlotlyJS.plot(traces, layout)
     PlotlyJS.savefig(p2, folder*"/Outage_Simulation_Plots/Outage_Survival_Histogram_By_Day_Of_Year_$(OutageLength_TimeSteps_Input)_Timestep_Outage.html")
-    if Multinode_Inputs.display_results
-        display(p2)
-    end
+    #display(p2)
+    
 end
 
 
