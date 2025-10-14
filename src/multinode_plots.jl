@@ -55,6 +55,9 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
     TimeStamp = data_dictionary_for_plots["TimeStamp"]
     CompiledResults = data_dictionary_for_plots["CompiledResults"]
 
+    if length(filepath_for_saving_plots) > 75
+        @warn "The file path entered into the multinode_create_plots function is long and the code may error when trying to save the plots"
+    end
 
     # Generate warnings or errors for improper inputs into the multinode plotting function
     if Multinode_Inputs.number_of_plots_from_outage_simulator > Multinode_Inputs.number_of_outages_to_simulate
