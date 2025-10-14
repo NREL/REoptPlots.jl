@@ -115,8 +115,9 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
                 i = data["i"]
                 TotalTimeSteps = data["TotalTimeSteps"]
                 OutageLength_TimeSteps_Input = y
-
-                CreatePlotsForOutageSimulatorModel(Multinode_Inputs, m_outagesimulator, DataDictionaryForEachNode, OutageLength_TimeSteps_Input, TimeStamp, TotalTimeSteps, NodeList, x, i, folder)
+                if termination_status(m_outagesimulator) == JuMP.OPTIMAL # double check that the outage simulator solved
+                    CreatePlotsForOutageSimulatorModel(Multinode_Inputs, m_outagesimulator, DataDictionaryForEachNode, OutageLength_TimeSteps_Input, TimeStamp, TotalTimeSteps, NodeList, x, i, folder)
+                end
             end
         end
     end
