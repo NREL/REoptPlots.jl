@@ -283,9 +283,18 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
         end
     end
     BatteryOutput = zeros(Multinode_Inputs.time_steps_per_hour * 8760)
+    BatteryCharging = zeros(Multinode_Inputs.time_steps_per_hour * 8760)
     for NodeNumberTemp in NodesWithBattery
         if results["REopt_results"][NodeNumberTemp]["ElectricStorage"]["size_kw"] > 0  # include this if statement to prevent trying to add in empty electric storage time series vectors
             BatteryOutput = BatteryOutput + results["REopt_results"][NodeNumberTemp]["ElectricStorage"]["storage_to_load_series_kw"] + results["REopt_results"][NodeNumberTemp]["ElectricStorage"]["storage_to_grid_series_kw"] 
+            
+            BatteryCharging = BatteryCharging + results["REopt_results"][NodeNumberTemp]["ElectricUtility"]["electric_to_storage_series_kw"]
+            if "PV" in keys(results["REopt_results"][NodeNumberTemp])
+                BatteryCharging = BatteryCharging + results["REopt_results"][NodeNumberTemp]["PV"]["electric_to_storage_series_kw"]
+            end
+            if "Generator" in keys(results["REopt_results"][NodeNumberTemp])
+                BatteryCharging = BatteryCharging + results["REopt_results"][NodeNumberTemp]["Generator"]["electric_to_storage_series_kw"].data
+            end
         end
     end
 
@@ -320,6 +329,7 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
     Plots.plot(days, TotalLoad_series, label="Total Load")
     Plots.plot!(days, PVOutput, label="Combined PV Output")
     Plots.plot!(days, BatteryOutput, label = "Combined Battery Output")
+    Plots.plot!(days, BatteryCharging, label = "Combined Battery Charging")
     Plots.plot!(days, GeneratorOutput, label = "Combined Generator Output")
     Plots.plot!(days, PowerFromGrid, label = "Grid Power")
     if Multinode_Inputs.model_outages_with_outages_vector
@@ -396,6 +406,10 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
     push!(traces, PlotlyJS.scatter(name = "Combined Battery Output", showlegend = true, fill = "none", line = PlotlyJS.attr(width = 3, color="blue"),
         x = days,
         y = BatteryOutput
+    ))
+    push!(traces, PlotlyJS.scatter(name = "Combined Battery Charging", showlegend = true, fill = "none", line = PlotlyJS.attr(width = 3, color="rgb(37, 213, 255)"), # light blue
+        x = days,
+        y = -BatteryCharging
     ))
     push!(traces, PlotlyJS.scatter(name = "Combined Generator Output", showlegend = true, fill = "none", line = PlotlyJS.attr(width = 3, color="gray"),
         x = days,
@@ -623,6 +637,21 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     start_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(start_day)) + Second(round(60*60*24*(start_day - floor(start_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
     end_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(end_day)) + Second(round(60*60*24*(end_day - floor(end_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
 
+    if Multinode_Inputs.number_of_phases == 1
+        phase_labels = []
+    elseif (Multinode_Inputs.number_of_phases == 2) || (Multinode_Inputs.number_of_phases == 3)
+        phase_information = REopt.create_dictionary_of_phases_for_each_line(results["PMD_data_eng"])
+        
+        phase_labels = [PlotlyJS.attr(xref='x', yref='y', xanchor="left", yanchor="bottom",
+                                          x= Symbol_data_inputs[line_key_values[k]][1][1], 
+                                          y= Symbol_data_inputs[line_key_values[k]][1][2],
+                                          text = "Ø"*string(phase_information[line_key_values[k]]),
+                                          showarrow=false
+                                ) for k in 1:length(line_cords)]
+    else
+        throw(@error("The number of phases defined in the multi-node inputs dictionary is invalid."))
+    end
+    
     frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
             data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))], 
             name = "time=$(j)",
@@ -634,6 +663,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                                                     [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
                                                     [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
                                                     [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
+                                                    phase_labels,
                                                     [PlotlyJS.attr(x=bus_cords[bus_key_values[j]][2], y=bus_cords[bus_key_values[j]][1], text=bus_key_values[j]*results_by_node[bus_key_values[j]], xanchor="right", yanchor="bottom", showarrow=false) for j in 1:length(bus_key_values) ]),
              
                                  shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
