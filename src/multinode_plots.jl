@@ -580,7 +580,9 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
         for i in collect(1:model_total_timesteps) 
             for j in 1:(length(Color_bins)-1)
                 if typeof(powerflow[line]["ActiveLineFlow"][i]) != String
-                    if (abs(powerflow[line]["ActiveLineFlow"][i]) >= Color_bins[j]) && (abs(powerflow[line]["ActiveLineFlow"][i]) <= Color_bins[j+1])
+                    if abs(powerflow[line]["ActiveLineFlow"][i]) <= 0.001
+                        line_colors[line][i] = "rgb(127, 137, 145)" # Grey line indicates no power flow
+                    elseif (abs(powerflow[line]["ActiveLineFlow"][i]) >= Color_bins[j]) && (abs(powerflow[line]["ActiveLineFlow"][i]) <= Color_bins[j+1])
                         line_colors[line][i] = Colors[j]
                     end
                 end
@@ -627,11 +629,12 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             layout=PlotlyJS.attr(title_text="Power Flow Time Series Animation, from  $(start_datetime)  to  $(end_datetime)", 
                                  xaxis_title_text = "",
                                  yaxis_title_text = "",
-                                 annotations = vcat([PlotlyJS.attr(x=x1,y=y0[i],text=Color_bins[i], xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)], 
+                                 annotations = vcat([PlotlyJS.attr(x=x1,y=y0[i],text=string(Color_bins[i])*" kW", xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)],
+                                                    [PlotlyJS.attr(x=x1,y=y0[1] - stepsize,text="0 kW", xanchor="left", yanchor="center", showarrow=false)], 
                                                     [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
                                                     [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
-                                                    [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+stepsize, text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
-                                                    [PlotlyJS.attr(x=bus_cords[bus_key_values[j]][2], y=bus_cords[bus_key_values[j]][1], text=bus_key_values[j]*results_by_node[bus_key_values[j]], xanchor="left", yanchor="bottom", showarrow=false) for j in 1:length(bus_key_values) ]),
+                                                    [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
+                                                    [PlotlyJS.attr(x=bus_cords[bus_key_values[j]][2], y=bus_cords[bus_key_values[j]][1], text=bus_key_values[j]*results_by_node[bus_key_values[j]], xanchor="right", yanchor="bottom", showarrow=false) for j in 1:length(bus_key_values) ]),
              
                                  shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
                                                          x0= Symbol_data_inputs[line_key_values[k]][1][1], 
@@ -647,7 +650,9 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                                                          y1= Symbol_data_inputs[line_key_values[k]][6][j], 
                                                          line = PlotlyJS.attr(color=line_colors[line_key_values[k]][j]), 
                                                          ) for k in 1:length(line_cords)],
-                                               [PlotlyJS.rect(x0=x0, y0= y0[i], x1=x1, y1=y1[i], fillcolor=Colors[i], line=PlotlyJS.attr(width=0), xref='x',yref='y') for i in collect(1:(increments-1))])
+                                               [PlotlyJS.rect(x0=x0, y0= y0[i], x1=x1, y1=y1[i], fillcolor=Colors[i], line=PlotlyJS.attr(width=0), xref='x',yref='y') for i in collect(1:(increments-1))],
+                                               [PlotlyJS.rect(x0=x0, y0= y0[1] - stepsize - (stepsize/2), x1=x1, y1=y1[1] - stepsize - (stepsize/2), fillcolor="rgb(127, 137, 145)", line=PlotlyJS.attr(width=0), xref='x',yref='y')]
+                                               )
                                 )) for j in timesteps]
     
     steps_days = [Dates.format(DateTime(2021, 1, 1) + Day(floor(day)) + Second(round(60*60*24*(day - floor(day)))), "U d at HH:MM") for day in (collect(1:model_total_timesteps)/(24*Multinode_Inputs.time_steps_per_hour))]# This line of code is based off of code suggested by generative AI
