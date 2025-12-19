@@ -47,13 +47,17 @@ data_dictionary_for_plots = Dict([
 
 using Plots, JuMP
 
-function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard)
+function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng)
 
     # Extract some information from the inputs dictionary
     Multinode_Inputs = data_dictionary_for_plots["Multinode_Inputs"]
     DataDictionaryForEachNode = data_dictionary_for_plots["DataDictionaryForEachNode"]
     TimeStamp = data_dictionary_for_plots["TimeStamp"]
     CompiledResults = data_dictionary_for_plots["CompiledResults"]
+
+    phases_for_each_line =  REopt.create_dictionary_of_phases_for_each_line(data_eng)  # Initiate this dictionary with just the phases for each line; 
+    phases_for_each_line_and_transformer_line, lines, transformer_busses = REopt.add_transformer_lines_to_the_dictionary(data_eng, collect(keys(data_eng["line"])), phases_for_each_line) # Then add the line IDs and phases for each transformer, representing the transformers as lines
+    all_lines_including_transformers_as_lines =  collect(keys(phases_for_each_line_and_transformer_line))
 
     if length(filepath_for_saving_plots) > 75
         @warn "The file path entered into the multinode_create_plots function is long and the code may error when trying to save the plots"
@@ -131,19 +135,31 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
 
     # Plot the power flows on a map, if bus coordinates were provided
     if Multinode_Inputs.bus_coordinates != ""
-        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder)
+        PMD_line_info = data_eng["line"]
+        lines_in_PMD = collect(keys(data_eng["line"])) # Vector of line names based on data in PMD (which doesn't represent the transformers as lines)  
+
+        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info)
 
         REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["model"], folder)
 
-        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder)
+        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info)
     end
     
 end
 
 
-function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder)
+function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info)
 
-    bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs) 
+    bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info) 
+
+    if Multinode_Inputs.display_information_during_modeling_run
+        print("\n For plotting the Results and Layout map: \n")
+        print("\n The bus_key_values are: $(bus_key_values) \n")
+        print("\n The bus_cords are: $(bus_cords) \n") 
+        print("\n The line_key_values are: $(line_key_values) \n")
+        print("\n The line_cords are: $(line_cords) \n")
+        print("\n all_lines_including_transformers_as_lines are: $(all_lines_including_transformers_as_lines)")
+    end 
 
     results_by_node = REopt.CollectResultsByNode(results, busses)
 
@@ -186,8 +202,6 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder)
     
     p = PlotlyJS.plot(traces,layout)
     PlotlyJS.savefig(p, folder*"/Results_and_Layout.html")
-
-    #display(p)
     
 end
 
@@ -264,17 +278,6 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
         end
     end
     
-    if Multinode_Inputs.display_information_during_modeling_run
-        print("\n The nodes with PV are: ")
-        print(NodesWithPV)
-    end
-
-    # TODO: account for the situation where one node might be exporting PV and then another node might use that power to charge a battery
-    PVOutput = zeros(Multinode_Inputs.time_steps_per_hour * 8760)
-    for NodeNumberTemp in NodesWithPV
-        PVOutput = PVOutput + results["REopt_results"][NodeNumberTemp]["PV"]["electric_to_load_series_kw"] + results["REopt_results"][NodeNumberTemp]["PV"]["electric_to_grid_series_kw"]
-    end
-
     # determine all of the nodes with Battery
     NodesWithBattery = []
     for i in keys(results["REopt_results"])
@@ -282,6 +285,22 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
             push!(NodesWithBattery, i)
         end
     end
+
+    if Multinode_Inputs.display_information_during_modeling_run
+        print("\n The nodes with PV are: ")
+        print(NodesWithPV)
+    end
+
+    PVOutput = zeros(Multinode_Inputs.time_steps_per_hour * 8760)
+    for NodeNumberTemp in NodesWithPV
+        PVOutput = PVOutput + results["REopt_results"][NodeNumberTemp]["PV"]["electric_to_load_series_kw"] + results["REopt_results"][NodeNumberTemp]["PV"]["electric_to_grid_series_kw"]
+        if NodeNumberTemp in NodesWithBattery
+            if results["REopt_results"][NodeNumberTemp]["ElectricStorage"]["size_kw"] > 0
+                PVOutput = PVOutput + results["REopt_results"][NodeNumberTemp]["PV"]["electric_to_storage_series_kw"]
+            end
+        end
+    end
+
     BatteryOutput = zeros(Multinode_Inputs.time_steps_per_hour * 8760)
     BatteryCharging = zeros(Multinode_Inputs.time_steps_per_hour * 8760)
     for NodeNumberTemp in NodesWithBattery
@@ -471,11 +490,11 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
 end
  
 
-function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder; file_suffix="")
+function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; file_suffix="")
     # This function plots the power flows through the network
 
     Multinode_Inputs = results["Multinode_Inputs"]
-    bus_key_values, line_key_values, bus_cords, line_cords, busses, substation_cords = REopt.CollectMapInformation(results, Multinode_Inputs) 
+    bus_key_values, line_key_values, bus_cords, line_cords, busses, substation_cords = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info) 
     results_by_node = REopt.CollectResultsByNode(results, busses)
 
     Multinode_Inputs.display_information_during_modeling_run ? print("\n The substation coordinates are: $(substation_cords)") : nothing
@@ -589,18 +608,23 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     
     line_colors = Dict{Any, Any}()
     for line in line_key_values
-        line_colors[line] = Vector{String}(undef, maximum(model_total_timesteps))
-        line_colors[line][:] .= "rgb(1,1,1)" # default rgb(1,1,1), which indicates that data is not shown properly for that timestep
-        for i in collect(1:model_total_timesteps) 
-            for j in 1:(length(Color_bins)-1)
-                if typeof(powerflow[line]["ActiveLineFlow"][i]) != String
-                    if abs(powerflow[line]["ActiveLineFlow"][i]) <= 0.001
-                        line_colors[line][i] = "rgb(127, 137, 145)" # Grey line indicates no power flow
-                    elseif (abs(powerflow[line]["ActiveLineFlow"][i]) >= Color_bins[j]) && (abs(powerflow[line]["ActiveLineFlow"][i]) <= Color_bins[j+1])
-                        line_colors[line][i] = Colors[j]
+        if !startswith(line, "xfmr_line")
+            line_colors[line] = Vector{String}(undef, maximum(model_total_timesteps))
+            line_colors[line][:] .= "rgb(1,1,1)" # default rgb(1,1,1), which indicates that data is not shown properly for that timestep
+            for i in collect(1:model_total_timesteps) 
+                for j in 1:(length(Color_bins)-1)
+                    if typeof(powerflow[line]["ActiveLineFlow"][i]) != String
+                        if abs(powerflow[line]["ActiveLineFlow"][i]) <= 0.001
+                            line_colors[line][i] = "rgb(127, 137, 145)" # Grey line indicates no power flow
+                        elseif (abs(powerflow[line]["ActiveLineFlow"][i]) >= Color_bins[j]) && (abs(powerflow[line]["ActiveLineFlow"][i]) <= Color_bins[j+1])
+                            line_colors[line][i] = Colors[j]
+                        end
                     end
                 end
             end
+        else
+            line_colors[line] = Vector{String}(undef, maximum(model_total_timesteps))
+            line_colors[line][:] .= "rgb(85,85,85)" # default rgb(1,1,1), which indicates that there is a transformer there
         end
     end
     
@@ -640,8 +664,11 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     if Multinode_Inputs.number_of_phases == 1
         phase_labels = []
     elseif (Multinode_Inputs.number_of_phases == 2) || (Multinode_Inputs.number_of_phases == 3)
-        phase_information = REopt.create_dictionary_of_phases_for_each_line(results["PMD_data_eng"])
-        
+        phases_for_each_line = REopt.create_dictionary_of_phases_for_each_line(results["PMD_data_eng"])
+        phases_for_each_line_and_transformer_line, lines, transformer_busses = REopt.add_transformer_lines_to_the_dictionary(results["PMD_data_eng"], collect(keys(results["PMD_data_eng"]["line"])), phases_for_each_line) # Then add the line IDs and phases for each transformer, representing the transformers as lines
+        phase_information = phases_for_each_line_and_transformer_line
+
+        print("\n Phase information is: $(phase_information)")
         phase_labels = [PlotlyJS.attr(xref='x', yref='y', xanchor="left", yanchor="bottom",
                                           x= Symbol_data_inputs[line_key_values[k]][1][1], 
                                           y= Symbol_data_inputs[line_key_values[k]][1][2],
@@ -736,59 +763,75 @@ function SymbolData(results, line_cords, timesteps_to_model, minx, maxx, scalera
     powerflow = results["Dictionary_LineFlow_Power_Series"]
     
     for i in collect(keys(line_cords))
-        midpoint = [0,0]
-        x_average = 0.5 * (line_cords[i][1][2] + line_cords[i][2][2])
-        y_average = 0.5 * (line_cords[i][1][1] + line_cords[i][2][1])
-        midpoint = [x_average, y_average]
-        
-        x_change = line_cords[i][2][2] - line_cords[i][1][2]
-        y_change = line_cords[i][2][1] - line_cords[i][1][1]
-        if x_change != 0
-            slope_radians = atan(y_change, x_change)
-        elseif y_change > 0
-            slope_radians = 3.14159 / 2
-        elseif y_change < 0
-            slope_radians = -3.14159 / 2
-        end
-        slope_degrees = slope_radians * (180 / 3.14159)
-        SymbolDictionary[i] = [midpoint, slope_degrees, [], [], [], []] # initiate the arrays for the end points of the arrows
-        arrow_angle_radians = pi / 4 
-        arrow_length = 0.01 * (maxx - minx) # define the arrow length as a fraction of the plot size
-        x2 = zeros(maximum(timesteps_to_model))
-        y2 = zeros(maximum(timesteps_to_model))
-        x3 = zeros(maximum(timesteps_to_model))
-        y3 = zeros(maximum(timesteps_to_model))
-
-        for j in timesteps_to_model
-            active_power = powerflow[i]["ActiveLineFlow"][j]
-
-            if active_power < -0.001
-                x2[j] = midpoint[1] + (arrow_length * cos(slope_radians + arrow_angle_radians))
-                y2[j] = midpoint[2] + (arrow_length * sin(slope_radians + arrow_angle_radians) * scaleratio_input)
-
-                x3[j] = midpoint[1] + (arrow_length * cos(slope_radians - arrow_angle_radians))
-                y3[j] = midpoint[2] + (arrow_length * sin(slope_radians - arrow_angle_radians) * scaleratio_input)
+        if !(startswith(i, "xfmr_line"))
+            midpoint = [0,0]
+            x_average = 0.5 * (line_cords[i][1][2] + line_cords[i][2][2])
+            y_average = 0.5 * (line_cords[i][1][1] + line_cords[i][2][1])
+            midpoint = [x_average, y_average]
             
-            elseif active_power > 0.001
-                x2[j] = midpoint[1] - (arrow_length * cos(slope_radians + arrow_angle_radians))
-                y2[j] = midpoint[2] - (arrow_length * sin(slope_radians + arrow_angle_radians) * scaleratio_input)
-
-                x3[j] = midpoint[1] - (arrow_length * cos(slope_radians - arrow_angle_radians))
-                y3[j] = midpoint[2] - (arrow_length * sin(slope_radians - arrow_angle_radians) * scaleratio_input)
-            
-            else
-                # If there is no power flow in the line, draw the angled line to start and stop at the midpoint (so no arrow will be shown)
-                x2[j] = midpoint[1]
-                y2[j] = midpoint[2]
-                x3[j] = midpoint[1]
-                y3[j] = midpoint[2]
+            x_change = line_cords[i][2][2] - line_cords[i][1][2]
+            y_change = line_cords[i][2][1] - line_cords[i][1][1]
+            if x_change != 0
+                slope_radians = atan(y_change, x_change)
+            elseif y_change > 0
+                slope_radians = 3.14159 / 2
+            elseif y_change < 0
+                slope_radians = -3.14159 / 2
             end
-        end
+            slope_degrees = slope_radians * (180 / 3.14159)
+            SymbolDictionary[i] = [midpoint, slope_degrees, [], [], [], []] # initiate the arrays for the end points of the arrows
+            arrow_angle_radians = pi / 4 
+            arrow_length = 0.01 * (maxx - minx) # define the arrow length as a fraction of the plot size
+            x2 = zeros(maximum(timesteps_to_model))
+            y2 = zeros(maximum(timesteps_to_model))
+            x3 = zeros(maximum(timesteps_to_model))
+            y3 = zeros(maximum(timesteps_to_model))
 
-        SymbolDictionary[i][3] = x2
-        SymbolDictionary[i][4] = y2
-        SymbolDictionary[i][5] = x3
-        SymbolDictionary[i][6] = y3       
+            for j in timesteps_to_model
+                active_power = powerflow[i]["ActiveLineFlow"][j]
+
+                if active_power < -0.001
+                    x2[j] = midpoint[1] + (arrow_length * cos(slope_radians + arrow_angle_radians))
+                    y2[j] = midpoint[2] + (arrow_length * sin(slope_radians + arrow_angle_radians) * scaleratio_input)
+
+                    x3[j] = midpoint[1] + (arrow_length * cos(slope_radians - arrow_angle_radians))
+                    y3[j] = midpoint[2] + (arrow_length * sin(slope_radians - arrow_angle_radians) * scaleratio_input)
+                
+                elseif active_power > 0.001
+                    x2[j] = midpoint[1] - (arrow_length * cos(slope_radians + arrow_angle_radians))
+                    y2[j] = midpoint[2] - (arrow_length * sin(slope_radians + arrow_angle_radians) * scaleratio_input)
+
+                    x3[j] = midpoint[1] - (arrow_length * cos(slope_radians - arrow_angle_radians))
+                    y3[j] = midpoint[2] - (arrow_length * sin(slope_radians - arrow_angle_radians) * scaleratio_input)
+                
+                else
+                    # If there is no power flow in the line, draw the angled line to start and stop at the midpoint (so no arrow will be shown)
+                    x2[j] = midpoint[1]
+                    y2[j] = midpoint[2]
+                    x3[j] = midpoint[1]
+                    y3[j] = midpoint[2]
+                end
+            end
+
+            SymbolDictionary[i][3] = x2
+            SymbolDictionary[i][4] = y2
+            SymbolDictionary[i][5] = x3
+            SymbolDictionary[i][6] = y3
+        else
+            midpoint = [0,0]
+            x_average = 0.5 * (line_cords[i][1][2] + line_cords[i][2][2])
+            y_average = 0.5 * (line_cords[i][1][1] + line_cords[i][2][1])
+            midpoint = [x_average, y_average]
+            slope_degrees = 0
+
+            SymbolDictionary[i] = [midpoint, 
+                                    slope_degrees, 
+                                    fill(x_average, maximum(timesteps_to_model)), 
+                                    fill(y_average, maximum(timesteps_to_model)), 
+                                    fill(x_average, maximum(timesteps_to_model)), 
+                                    fill(y_average, maximum(timesteps_to_model))]
+
+        end       
     end
 
     return  SymbolDictionary
