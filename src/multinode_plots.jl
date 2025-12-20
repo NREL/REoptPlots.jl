@@ -30,6 +30,8 @@
 
 #=
 # Example of an inputs dictionary into the multinode_create_plots function
+    # REopt multinode can automatically create a dictionary like this after running the model
+    
 data_dictionary_for_plots = Dict([
     ("voltage_plot_time_step", 1),
     ("time_steps_for_results_dashboard", time_steps_for_results_dashboard ),
@@ -70,8 +72,6 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
 
     # If only using PMD (and not the simple powerflow model), then prevent trying to plot a REopt timestep that does not exist in the PMD model
     if !(Multinode_Inputs.apply_simple_powerflow_model_to_timesteps_that_do_not_use_PMD)
-        #print("\n applying simple power flow: ")
-        #print(Multinode_Inputs.apply_simple_powerflow_model_to_timesteps_that_do_not_use_PMD)
         for i in time_steps_for_results_dashboard
             if i ∉ Multinode_Inputs.PMD_time_steps
                 throw(@error("Because the simple powerflow model is not being used, please make this adjustment to the model inputs: every time step for the results dashboard (time_steps_for_results_dashboard) must be in the PMD time steps (PMD_time_steps)."))
@@ -485,8 +485,6 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
     p = PlotlyJS.plot(traces, layout)
     PlotlyJS.savefig(p, folder*"/CombinedResults_PowerOutput_InteractivePlot.html")
     
-    #display(p)
-    
 end
  
 
@@ -499,23 +497,22 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
 
     Multinode_Inputs.display_information_during_modeling_run ? print("\n The substation coordinates are: $(substation_cords)") : nothing
 
+    line_type = Dict()
+    for line in all_lines_including_transformers_as_lines
+        if line in lines_in_PMD
+            line_type[line] = "solid" 
+        else
+            line_type[line] = "dash"
+        end
+    end
+        
     # Determine the timesteps to plot based on the timesteps the user requested to plot in the dashboard
     maximum_timestep = maximum(REopt_timesteps_for_dashboard_InREoptTimes)
     minimum_timestep = minimum(REopt_timesteps_for_dashboard_InREoptTimes)
     PMDTimeSteps_InREoptTimes = Multinode_Inputs.PMD_time_steps
-    timesteps = REopt_timesteps_for_dashboard_InREoptTimes # PMDTimeSteps_for_dashboard_InPMDTimes    
+    timesteps = REopt_timesteps_for_dashboard_InREoptTimes   
     
     model_total_timesteps = Int(8760*Multinode_Inputs.time_steps_per_hour) 
-
-    #=
-    PMDTimeSteps_for_dashboard_InPMDTimes = []
-    PMD_dashboard_InPMDTimes_toREoptTimes = Dict([])
-    for timestep in REopt_timesteps_for_dashboard_InREoptTimes
-        PMD_time_step_IndecesForDashboard = findall(x -> x==timestep, PMDTimeSteps_InREoptTimes)[1] #use the [1] to convert the 1-element vector into an integer
-        push!(PMDTimeSteps_for_dashboard_InPMDTimes, PMD_time_step_IndecesForDashboard)
-        PMD_dashboard_InPMDTimes_toREoptTimes[PMD_time_step_IndecesForDashboard] = timestep
-    end
-    =#
 
     if Multinode_Inputs.model_outages_with_outages_vector 
         PowerOutageIndicator = Array{String}(undef, model_total_timesteps)
@@ -544,7 +541,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     PowerFlowModelIndicator = Array{String}(undef, model_total_timesteps)
     PowerFlowModelIndicator[:] .= "Not defined"
     if Multinode_Inputs.apply_simple_powerflow_model_to_timesteps_that_do_not_use_PMD
-        for timestep in collect(1:model_total_timesteps) # timesteps
+        for timestep in collect(1:model_total_timesteps)
             if timestep in PMDTimeSteps_InREoptTimes
                 PowerFlowModelIndicator[timestep] = "Model: PMD"
             else
@@ -576,8 +573,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     color_numbers = vcat(color1_to_color2, color2_to_color3, color3_to_color4, color4_to_color5)
     
     Colors = [string("rgb(",Int(round(c[1])),",",Int(round(c[2])),",",Int(round(c[3])),")") for c in color_numbers]
-    #*******
-    
+        
     deleteat!(Colors, increments) # with 20 increments, there should only be 19 color bins
 
     # Determine the maximum power in the data that is being plotted:
@@ -623,8 +619,9 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                 end
             end
         else
+            # For transformers:
             line_colors[line] = Vector{String}(undef, maximum(model_total_timesteps))
-            line_colors[line][:] .= "rgb(85,85,85)" # default rgb(1,1,1), which indicates that there is a transformer there
+            line_colors[line][:] .= "rgb(85,85,85)"
         end
     end
     
@@ -691,7 +688,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                                                     [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
                                                     [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
                                                     phase_labels,
-                                                    [PlotlyJS.attr(x=bus_cords[bus_key_values[j]][2], y=bus_cords[bus_key_values[j]][1], text=bus_key_values[j]*results_by_node[bus_key_values[j]], xanchor="right", yanchor="bottom", showarrow=false) for j in 1:length(bus_key_values) ]),
+                                                    [PlotlyJS.attr(x=bus_cords[bus_key_values[j]][2], y=bus_cords[bus_key_values[j]][1], text=bus_key_values[j]*results_by_node[bus_key_values[j]], xanchor="right", yanchor="bottom", showarrow=true) for j in 1:length(bus_key_values) ]),
              
                                  shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
                                                          x0= Symbol_data_inputs[line_key_values[k]][1][1], 
@@ -716,17 +713,13 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     
     steps = [PlotlyJS.attr(method = "animate",
             args = [["time=$(i)"], PlotlyJS.attr(frame=PlotlyJS.attr(duration=500, redraw=true), mode="immediate", transition=PlotlyJS.attr(duration=0))],
-            #label = "$(round(i/(24*Multinode_Inputs.time_steps_per_hour), digits=2))") for i in timesteps]
             label = steps_days[i]*" (ts=$(i))") for i in timesteps]
     layout = PlotlyJS.Layout(
         showlegend=false,
+        editable=true,
         xaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='y', scaleratio = scaleratio_input),
         yaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='x'),
-        #annotations = vcat([PlotlyJS.attr(x=x1,y=y0[i],text=Color_bins[i], xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)], 
-        #                   [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
-        #                   [PlotlyJS.attr(x=bus_cords[bus_key_values[j]][2], y=bus_cords[bus_key_values[j]][1], text=bus_key_values[j]*results_by_node[bus_key_values[j]], xanchor="left", yanchor="bottom", showarrow=false) for j in 1:length(bus_key_values) ]),
-                          
-                        
+                     
         sliders=[PlotlyJS.attr(yanchor="top", 
                     xanchor="left",
                     currentvalue=PlotlyJS.attr(prefix="Day: ", visible=true, font_size=12),
@@ -746,13 +739,14 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                     args=[[nothing],PlotlyJS.attr(transition=PlotlyJS.attr(duration=0), mode="immediate")])
         ])])
     
-    data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][timesteps[1]])) for i in 1:length(line_cords)]
+    data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][timesteps[1]], dash=line_type[line_key_values[i]])) for i in 1:length(line_cords)]
             
-    p = PlotlyJS.Plot(data, layout, frames)
+    config= PlotlyJS.PlotConfig(editable=true)
+
+    p = PlotlyJS.Plot(data, layout, frames; config=config)
 
     PlotlyJS.savefig(p, folder*"/PowerFlowAnimation"*file_suffix*".html")
     
-    #display(p) # do not display because this plot does not work in VScode
     return frames, layout, steps, line_cords, bus_cords, data,  bus_key_values, line_key_values, line_colors, timesteps, powerflow, Symbol_data_inputs
 end
 
@@ -928,15 +922,13 @@ function MapOutageSimulatorResultsPlots(Multinode_Inputs, outage_survival_result
     layout = PlotlyJS.Layout(barmode="stack", title = "$(OutageLength_TimeSteps_Input) Time Step Outage: Distribution of Survival by time of day", xaxis_title = "Time of Day (hour)", yaxis_title="Count")
     p1 = PlotlyJS.plot(traces, layout)
     PlotlyJS.savefig(p1, folder*"/Outage_Simulation_Plots/Outage_Survival_Histogram_By_Time_Of_Day_$(OutageLength_TimeSteps_Input)_Timestep_Outage.html")
-    #display(p1)
-    
+        
     traces = PlotlyJS.GenericTrace[]
     push!(traces, PlotlyJS.histogram(x=day_of_year_survived, name="Survived", xbins_start=0, xbins_end=371, xbins_size=7))
     push!(traces, PlotlyJS.histogram(x=day_of_year_not_survived, name="Not Survived", xbins_start=0, xbins_end=371, xbins_size=7)) 
     layout = PlotlyJS.Layout(barmode="stack", title = "$(OutageLength_TimeSteps_Input) Time Step Outage: Distribution of Survival by day of year", xaxis_title = "Day of Year (binned in weekly intervals)", yaxis_title="Count")
     p2 = PlotlyJS.plot(traces, layout)
     PlotlyJS.savefig(p2, folder*"/Outage_Simulation_Plots/Outage_Survival_Histogram_By_Day_Of_Year_$(OutageLength_TimeSteps_Input)_Timestep_Outage.html")
-    #display(p2)
     
 end
 
