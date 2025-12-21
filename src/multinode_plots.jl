@@ -442,7 +442,7 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
     if Multinode_Inputs.model_outages_with_outages_vector
         if Multinode_Inputs.outages_vector != []
             
-            outage_starts, outage_ends = DetermineOutageStartsAndEnds(Multinode_Inputs, Multinode_Inputs.outages_vector)
+            outage_starts, outage_ends = REopt.DetermineOutageStartsAndEnds(Multinode_Inputs, Multinode_Inputs.outages_vector)
             
             for i in outage_starts
                 if i == outage_starts[1]
@@ -677,6 +677,12 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
         throw(@error("The number of phases defined in the multi-node inputs dictionary is invalid."))
     end
     
+    # Convert all of the characters to lower case
+    line_cords = Dict(lowercase(String(key)) => value for (key,value) in line_cords)
+    bus_cords = Dict(lowercase(String(key)) => value for (key,value) in bus_cords)
+
+    print("\n The line_cords are: $(line_cords)")
+
     frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
             data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))], 
             name = "time=$(j)",
@@ -772,6 +778,10 @@ function SymbolData(results, line_cords, timesteps_to_model, minx, maxx, scalera
                 slope_radians = 3.14159 / 2
             elseif y_change < 0
                 slope_radians = -3.14159 / 2
+            else
+                # For the situation where x_change and y_change are zero
+                print("\n For $(i), the x_change is: $(x_change), and y_change is: $(y_change); may need to update the code for slope_radians for proper plotting")
+                slope_radians = 3.14159 / 2
             end
             slope_degrees = slope_radians * (180 / 3.14159)
             SymbolDictionary[i] = [midpoint, slope_degrees, [], [], [], []] # initiate the arrays for the end points of the arrows
