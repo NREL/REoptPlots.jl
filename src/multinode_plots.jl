@@ -49,7 +49,7 @@ data_dictionary_for_plots = Dict([
 
 using Plots, JuMP
 
-function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng)
+function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng; powerflowplot_arrowlength=0.01)
 
     # Extract some information from the inputs dictionary
     Multinode_Inputs = data_dictionary_for_plots["Multinode_Inputs"]
@@ -138,7 +138,7 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
         PMD_line_info = data_eng["line"]
         lines_in_PMD = collect(keys(data_eng["line"])) # Vector of line names based on data in PMD (which doesn't represent the transformers as lines)  
 
-        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info)
+        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; powerflowplot_arrowlength=powerflowplot_arrowlength)
 
         REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["model"], folder)
 
@@ -488,7 +488,7 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
 end
  
 
-function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; file_suffix="")
+function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength)
     # This function plots the power flows through the network
 
     Multinode_Inputs = results["Multinode_Inputs"]
@@ -653,7 +653,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
 
     start_day = minimum_timestep/(24*Multinode_Inputs.time_steps_per_hour)
     end_day = maximum_timestep/(24*Multinode_Inputs.time_steps_per_hour)
-    Symbol_data_inputs = SymbolData(results, line_cords, REopt_timesteps_for_dashboard_InREoptTimes, minx, maxx, scaleratio_input)
+    Symbol_data_inputs = SymbolData(results, line_cords, REopt_timesteps_for_dashboard_InREoptTimes, minx, maxx, scaleratio_input; powerflowplot_arrowlength = powerflowplot_arrowlength)
 
     start_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(start_day)) + Second(round(60*60*24*(start_day - floor(start_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
     end_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(end_day)) + Second(round(60*60*24*(end_day - floor(end_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
@@ -670,6 +670,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                                           x= Symbol_data_inputs[line_key_values[k]][1][1], 
                                           y= Symbol_data_inputs[line_key_values[k]][1][2],
                                           text = "Ø"*string(phase_information[line_key_values[k]]),
+                                          font = PlotlyJS.attr(color="black", size = 6),
                                           showarrow=false
                                 ) for k in 1:length(line_cords)]
     else
@@ -751,7 +752,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
 end
 
 
-function SymbolData(results, line_cords, timesteps_to_model, minx, maxx, scaleratio_input)
+function SymbolData(results, line_cords, timesteps_to_model, minx, maxx, scaleratio_input; powerflowplot_arrowlength=0.01)
     # Function to generate information for mapping a power flow direction symbol in the power flow chart
     SymbolDictionary = Dict()
     powerflow = results["Dictionary_LineFlow_Power_Series"]
@@ -775,7 +776,7 @@ function SymbolData(results, line_cords, timesteps_to_model, minx, maxx, scalera
             slope_degrees = slope_radians * (180 / 3.14159)
             SymbolDictionary[i] = [midpoint, slope_degrees, [], [], [], []] # initiate the arrays for the end points of the arrows
             arrow_angle_radians = pi / 4 
-            arrow_length = 0.01 * (maxx - minx) # define the arrow length as a fraction of the plot size
+            arrow_length = powerflowplot_arrowlength * (maxx - minx) # define the arrow length as a multiplier of the plot size
             x2 = zeros(maximum(timesteps_to_model))
             y2 = zeros(maximum(timesteps_to_model))
             x3 = zeros(maximum(timesteps_to_model))
