@@ -153,12 +153,12 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
     bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info) 
 
     if Multinode_Inputs.display_information_during_modeling_run
-        print("\n For plotting the Results and Layout map: \n")
-        print("\n The bus_key_values are: $(bus_key_values) \n")
-        print("\n The bus_cords are: $(bus_cords) \n") 
-        print("\n The line_key_values are: $(line_key_values) \n")
-        print("\n The line_cords are: $(line_cords) \n")
-        print("\n all_lines_including_transformers_as_lines are: $(all_lines_including_transformers_as_lines)")
+        #print("\n For plotting the Results and Layout map: \n")
+        #print("\n The bus_key_values are: $(bus_key_values) \n")
+        #print("\n The bus_cords are: $(bus_cords) \n") 
+        #print("\n The line_key_values are: $(line_key_values) \n")
+        #print("\n The line_cords are: $(line_cords) \n")
+        #print("\n all_lines_including_transformers_as_lines are: $(all_lines_including_transformers_as_lines)")
     end 
 
     results_by_node = REopt.CollectResultsByNode(results, busses)
@@ -202,6 +202,8 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
     
     p = PlotlyJS.plot(traces,layout)
     PlotlyJS.savefig(p, folder*"/Results_and_Layout.html")
+    #PlotlyJS.savefig(p, folder*"/Results_and_Layout_StaticPlot.png")
+
     #display(p)
 end
 
