@@ -202,7 +202,7 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
     
     p = PlotlyJS.plot(traces,layout)
     PlotlyJS.savefig(p, folder*"/Results_and_Layout.html")
-    
+    #display(p)
 end
 
 
@@ -680,9 +680,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     # Convert all of the characters to lower case
     line_cords = Dict(lowercase(String(key)) => value for (key,value) in line_cords)
     bus_cords = Dict(lowercase(String(key)) => value for (key,value) in bus_cords)
-
-    print("\n The line_cords are: $(line_cords)")
-
+                                                                                    
     frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
             data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))], 
             name = "time=$(j)",
@@ -695,7 +693,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                                                     [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
                                                     [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
                                                     phase_labels,
-                                                    [PlotlyJS.attr(x=bus_cords[bus_key_values[j]][2], y=bus_cords[bus_key_values[j]][1], text=bus_key_values[j]*results_by_node[bus_key_values[j]], xanchor="right", yanchor="bottom", showarrow=true) for j in 1:length(bus_key_values) ]),
+                                                    [PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]),
              
                                  shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
                                                          x0= Symbol_data_inputs[line_key_values[k]][1][1], 
