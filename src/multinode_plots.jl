@@ -49,7 +49,7 @@ data_dictionary_for_plots = Dict([
 
 using Plots, JuMP
 
-function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng; powerflowplot_arrowlength=0.01, plot_types="dynamic", static_plot_parameters=Dict())
+function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng; powerflowplot_arrowlength=0.01, plot_types="dynamic", plot_bus_labels=true, plot_phase_labels=true, static_plot_parameters=Dict())
 
     # Extract some information from the inputs dictionary
     Multinode_Inputs = data_dictionary_for_plots["Multinode_Inputs"]
@@ -139,17 +139,17 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
         lines_in_PMD = collect(keys(data_eng["line"])) # Vector of line names based on data in PMD (which doesn't represent the transformers as lines)  
         busses_in_PMD = collect(keys(data_eng["bus"]))
 
-        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
+        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=plot_bus_labels, plot_phase_labels=plot_phase_labels, powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
 
         REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["substation_power_flow"], folder)
 
-        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_types=plot_types, static_plot_parameters=static_plot_parameters)
+        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=plot_bus_labels, plot_phase_labels=plot_phase_labels, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
     end
     
 end
 
 
-function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_types="dynamic+static", static_plot_parameters=Dict())
+function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=true, plot_phase_labels=true, plot_types="dynamic+static", static_plot_parameters=Dict())
 
     bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD) 
 
@@ -636,7 +636,7 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
 end
  
 
-function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types="dynamic+static", static_plot_parameters=Dict())
+function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=true, plot_phase_labels=true, file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types="dynamic+static", static_plot_parameters=Dict())
     # This function plots the power flows through the network
 
     Multinode_Inputs = results["Multinode_Inputs"]
@@ -806,7 +806,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     start_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(start_day)) + Second(round(60*60*24*(start_day - floor(start_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
     end_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(end_day)) + Second(round(60*60*24*(end_day - floor(end_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
 
-    if Multinode_Inputs.number_of_phases == 1
+    if (Multinode_Inputs.number_of_phases == 1) || (plot_phase_labels == false)
         phase_labels = []
     elseif (Multinode_Inputs.number_of_phases == 2) || (Multinode_Inputs.number_of_phases == 3)
         phases_for_each_line = REopt.create_dictionary_of_phases_for_each_line(results["PMD_data_eng"])
@@ -829,7 +829,13 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     line_cords = Dict(lowercase(String(key)) => value for (key,value) in line_cords)
     bus_cords = Dict(lowercase(String(key)) => value for (key,value) in bus_cords)
     
+
     if (plot_types == "dynamic") || (plot_types=="dynamic+static")
+        if plot_bus_labels != false
+            bus_labels = [PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]
+        else
+            bus_labels = []
+        end
 
         frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
                 data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))], 
@@ -843,7 +849,8 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                                                         [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
                                                         [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
                                                         phase_labels,
-                                                        [PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]),
+                                                        bus_labels
+                                    ),
                 
                                     shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
                                                             x0= Symbol_data_inputs[line_key_values[k]][1][1], 
@@ -940,11 +947,13 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                 end
             end
             
-            for i in 1:length(bus_key_values)
-                bus_label = bus_key_values[i]*results_by_node[bus_key_values[i]]
-                Plots.scatter!([bus_cords[bus_key_values[i]][2]], [bus_cords[bus_key_values[i]][1]],
-                                markercolor=:blue, markerstrokewidth=0, markersize=bus_marker_size, 
-                                axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi, aspect_ratio=:equal)
+            if plot_bus_labels != false
+                for i in 1:length(bus_key_values)
+                    bus_label = bus_key_values[i]*results_by_node[bus_key_values[i]]
+                    Plots.scatter!([bus_cords[bus_key_values[i]][2]], [bus_cords[bus_key_values[i]][1]],
+                                    markercolor=:blue, markerstrokewidth=0, markersize=bus_marker_size, 
+                                    axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi, aspect_ratio=:equal)
+                end
             end
 
             # This section for the label placement was generated with the assistance of ChatGPT      
@@ -989,9 +998,11 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             Plots.annotate!(x1, y1[increments]+stepsize+(stepsize/2), Plots.text(PowerFlowModelIndicator[j], :right, :bottom))
                         
             # Add phase labels:
-            for k in 1:length(line_cords)
-                Plots.annotate!(Symbol_data_inputs[line_key_values[k]][1][1], Symbol_data_inputs[line_key_values[k]][1][2],
-                                            Plots.text("Ø"*string(phase_information[line_key_values[k]]), :left, :bottom, 4))
+            if plot_phase_labels != false
+                for k in 1:length(line_cords)
+                    Plots.annotate!(Symbol_data_inputs[line_key_values[k]][1][1], Symbol_data_inputs[line_key_values[k]][1][2],
+                                                Plots.text("Ø"*string(phase_information[line_key_values[k]]), :left, :bottom, 4))
+                end
             end
             
             # Plot one half of the arrow
