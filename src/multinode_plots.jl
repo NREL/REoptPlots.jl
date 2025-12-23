@@ -137,20 +137,21 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
     if Multinode_Inputs.bus_coordinates != ""
         PMD_line_info = data_eng["line"]
         lines_in_PMD = collect(keys(data_eng["line"])) # Vector of line names based on data in PMD (which doesn't represent the transformers as lines)  
+        busses_in_PMD = collect(keys(data_eng["bus"]))
 
-        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
+        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
 
-        REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["model"], folder)
+        REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["substation_power_flow"], folder)
 
-        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; plot_types=plot_types, static_plot_parameters=static_plot_parameters)
+        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_types=plot_types, static_plot_parameters=static_plot_parameters)
     end
     
 end
 
 
-function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; plot_types="dynamic+static", static_plot_parameters=Dict())
+function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_types="dynamic+static", static_plot_parameters=Dict())
 
-    bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info) 
+    bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD) 
 
     if Multinode_Inputs.display_information_during_modeling_run
         #print("\n For plotting the Results and Layout map: \n")
@@ -208,25 +209,27 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
     
 
     if (plot_types == "static") || (plot_types=="dynamic+static")
+        plot_size_guess = max(1200, (length(bus_key_values)*4))
 
         if !(isempty(static_plot_parameters))
-            plot_size = static_plot_parameters["plot_size"]
-            plot_dpi = static_plot_parameters["plot_dpi"]
-            xlimits_multiplier = static_plot_parameters["xlimits_multiplier"]
-            ylimits_multiplier = static_plot_parameters["ylimits_multiplier"]
-            font_size = static_plot_parameters["font_size"]
-            bus_marker_size = static_plot_parameters["bus_marker_size"]
-            line_width = static_plot_parameters["line_width"]
+            plot_size = "plot_size" in keys(static_plot_parameters) ? static_plot_parameters["plot_size"] : (plot_size_guess, plot_size_guess)
+            plot_dpi = "plot_dpi" in keys(static_plot_parameters) ? static_plot_parameters["plot_dpi"] : 300
+            xlimits_multiplier = "xlimits_multiplier" in keys(static_plot_parameters) ? static_plot_parameters["xlimits_multiplier"] : 0.3
+            ylimits_multiplier = "ylimits_multiplier" in keys(static_plot_parameters) ? static_plot_parameters["ylimits_multiplier"] : 0.3
+            font_size = "font_size" in keys(static_plot_parameters) ? static_plot_parameters["font_size"] : 6
+            bus_marker_size = "bus_marker_size" in keys(static_plot_parameters) ? static_plot_parameters["bus_marker_size"] : 5
+            line_width = "line_width" in keys(static_plot_parameters) ? static_plot_parameters["line_width"] : 2
         else
-            plot_size = (1200,1200)
+            plot_size = (plot_size_guess, plot_size_guess)
             plot_dpi = 300
             xlimits_multiplier = 0.3
             ylimits_multiplier = 0.3
-            font_size = 12
+            font_size = 6
             bus_marker_size = 5
             line_width = 2
         end
 
+        print("\n The plot size is: $(plot_size)")
 
         for i in 1:length(line_key_values)
             y_vector = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]]
@@ -243,7 +246,7 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
             bus_label = bus_key_values[i]*results_by_node[bus_key_values[i]]
             Plots.scatter!( [bus_cords[bus_key_values[i]][2]], [bus_cords[bus_key_values[i]][1]],
                             markercolor=:blue, markerstrokewidth=0, markersize=bus_marker_size, 
-                            axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi )
+                            axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi, aspect_ratio=:equal)
         end
 
        
@@ -261,6 +264,7 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
             half_w, half_h = label_box(bus_label, xscale, yscale)
             x_label = x + x_offset + half_w
             y_label = y
+            #=
             # vertical repositioning
             attempts = 0
             while test_overlaps(x_label, y_label, half_w, half_h, placed_labels) && (attempts < 50)
@@ -275,6 +279,7 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
                 y_end = clamp(y, y_label - (0.25*half_h), y_label + (0.25*half_h))
                 plot!([x, x_end], [y, y_end], lw=0.5, lc="black", legend=false)
             end
+            =#
             Plots.annotate!(x_label, y_label, Plots.text(bus_label, :right, :bottom, font_size))
         end
 
@@ -397,7 +402,7 @@ function Create_Voltage_Plot(results, TimeStamp, voltage_plot_time_step, folder;
 end
 
 
-function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptInputs_Combined, model, folder)
+function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptInputs_Combined, PowerFromGrid_data, folder)
     # Function to create additional plots using PlotlyJS
     
     OutageStartTimeStep = Multinode_Inputs.single_outage_start_time_step
@@ -483,7 +488,7 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
     # Save power input from the grid to a variable for plotting
     PowerFromGrid = zeros(Multinode_Inputs.time_steps_per_hour * 8760)
     if Multinode_Inputs.model_type == "PowerModelsDistribution"    
-        PowerFromGrid = value.(model[Symbol("dvSubstationPowerFlow")]).data  
+        PowerFromGrid = PowerFromGrid_data #"substation_power_flow" 
     end 
        
     #Plot the network-wide power use in a static plot
@@ -631,11 +636,11 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
 end
  
 
-function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types="dynamic+static", static_plot_parameters=Dict())
+function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types="dynamic+static", static_plot_parameters=Dict())
     # This function plots the power flows through the network
 
     Multinode_Inputs = results["Multinode_Inputs"]
-    bus_key_values, line_key_values, bus_cords, line_cords, busses, substation_cords = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info) 
+    bus_key_values, line_key_values, bus_cords, line_cords, busses, substation_cords = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD) 
     results_by_node = REopt.CollectResultsByNode(results, busses)
 
     Multinode_Inputs.display_information_during_modeling_run ? print("\n The substation coordinates are: $(substation_cords)") : nothing
@@ -903,23 +908,27 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
         for j in timesteps
             timestep_day = j/(24*Multinode_Inputs.time_steps_per_hour)
             
+            plot_size_guess = max(1200, (length(bus_key_values)*4))
+            
             if !(isempty(static_plot_parameters))
-                plot_size = static_plot_parameters["plot_size"]
-                plot_dpi = static_plot_parameters["plot_dpi"]
-                xlimits_multiplier = static_plot_parameters["xlimits_multiplier"]
-                ylimits_multiplier = static_plot_parameters["ylimits_multiplier"]
-                font_size = static_plot_parameters["font_size"]
-                bus_marker_size = static_plot_parameters["bus_marker_size"]
-                line_width = static_plot_parameters["line_width"]
+                plot_size = "plot_size" in keys(static_plot_parameters) ? static_plot_parameters["plot_size"] : (plot_size_guess, plot_size_guess)
+                plot_dpi = "plot_dpi" in keys(static_plot_parameters) ? static_plot_parameters["plot_dpi"] : 300
+                xlimits_multiplier = "xlimits_multiplier" in keys(static_plot_parameters) ? static_plot_parameters["xlimits_multiplier"] : 0.3
+                ylimits_multiplier = "ylimits_multiplier" in keys(static_plot_parameters) ? static_plot_parameters["ylimits_multiplier"] : 0.3
+                font_size = "font_size" in keys(static_plot_parameters) ? static_plot_parameters["font_size"] : 6
+                bus_marker_size = "bus_marker_size" in keys(static_plot_parameters) ? static_plot_parameters["bus_marker_size"] : 5
+                line_width = "line_width" in keys(static_plot_parameters) ? static_plot_parameters["line_width"] : 2
             else
-                plot_size = (1200,1200)
+                plot_size = (plot_size_guess, plot_size_guess)
                 plot_dpi = 300
-                xlimits_multiplier = 0.2
-                ylimits_multiplier = 0.2
-                font_size = 12
+                xlimits_multiplier = 0.3
+                ylimits_multiplier = 0.3
+                font_size = 6
                 bus_marker_size = 5
                 line_width = 2
             end
+
+            print("\n The plot size is: $(plot_size)")
 
             for i in 1:length(line_key_values)
                 y_vector = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]]
@@ -935,7 +944,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                 bus_label = bus_key_values[i]*results_by_node[bus_key_values[i]]
                 Plots.scatter!([bus_cords[bus_key_values[i]][2]], [bus_cords[bus_key_values[i]][1]],
                                 markercolor=:blue, markerstrokewidth=0, markersize=bus_marker_size, 
-                                axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi )
+                                axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi, aspect_ratio=:equal)
             end
 
             # This section for the label placement was generated with the assistance of ChatGPT      
@@ -949,12 +958,13 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             for key in bus_key_values
                 y, x = bus_cords[key]
                 bus_label = string(key)*results_by_node[key]
-                half_w, half_h = label_box(bus_label, xscale, yscale)
-                x_label = x + x_offset + half_w
+                #half_w, half_h = label_box(bus_label, xscale, yscale)
+                x_label = x  #+ x_offset + half_w
                 y_label = y
+                #=
                 # vertical repositioning
                 attempts = 0
-                while test_overlaps(x_label, y_label, half_w, half_h, placed_labels) && (attempts < 50)
+                while test_overlaps(x_label, y_label, half_w, half_h, placed_labels) && (attempts < 5)
                     y_label += y_step
                     attempts += 1
                 end
@@ -966,6 +976,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                     y_end = clamp(y, y_label - (0.25*half_h), y_label + (0.25*half_h))
                     plot!([x, x_end], [y, y_end], lw=0.5, lc="black", legend=false)
                 end
+                =#
                 Plots.annotate!(x_label, y_label, Plots.text(bus_label, :right, :bottom, font_size))
             end
 
@@ -980,7 +991,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             # Add phase labels:
             for k in 1:length(line_cords)
                 Plots.annotate!(Symbol_data_inputs[line_key_values[k]][1][1], Symbol_data_inputs[line_key_values[k]][1][2],
-                                            Plots.text("Ø"*string(phase_information[line_key_values[k]]), :left, :bottom, 6))
+                                            Plots.text("Ø"*string(phase_information[line_key_values[k]]), :left, :bottom, 4))
             end
             
             # Plot one half of the arrow
