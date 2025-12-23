@@ -49,7 +49,7 @@ data_dictionary_for_plots = Dict([
 
 using Plots, JuMP
 
-function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng; powerflowplot_arrowlength=0.01)
+function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng; powerflowplot_arrowlength=0.01, plot_types="dynamic", static_plot_parameters=Dict())
 
     # Extract some information from the inputs dictionary
     Multinode_Inputs = data_dictionary_for_plots["Multinode_Inputs"]
@@ -138,17 +138,17 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
         PMD_line_info = data_eng["line"]
         lines_in_PMD = collect(keys(data_eng["line"])) # Vector of line names based on data in PMD (which doesn't represent the transformers as lines)  
 
-        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; powerflowplot_arrowlength=powerflowplot_arrowlength)
+        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
 
         REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["model"], folder)
 
-        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info)
+        REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; plot_types=plot_types, static_plot_parameters=static_plot_parameters)
     end
     
 end
 
 
-function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info)
+function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; plot_types="dynamic+static", static_plot_parameters=Dict())
 
     bus_key_values, line_key_values, bus_cords, line_cords, busses = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info) 
 
@@ -163,48 +163,189 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
 
     results_by_node = REopt.CollectResultsByNode(results, busses)
 
-    traces = PlotlyJS.GenericTrace[] # initiate the vector as a vector of PlotlyJS traces
+    if (plot_types == "dynamic") || (plot_types=="dynamic+static")
 
-    # Add traces for the nodes
-    for i in 1:length(bus_key_values)
-        trace_bus = PlotlyJS.scattergeo(;locationmode = "USA-states",
-                        lat = [bus_cords[bus_key_values[i]][1]],
-                        lon = [bus_cords[bus_key_values[i]][2]],
-                        marker_size = 8,
-                        marker_color = "blue",
-                        mode = "markers+text",
-                        text = bus_key_values[i]*results_by_node[bus_key_values[i]], # Show the technology sizing next to each node
-                        textposition = "right"
-                        )
-        push!(traces, trace_bus)
-    end
+        traces = PlotlyJS.GenericTrace[] # initiate the vector as a vector of PlotlyJS traces
 
-    # Add traces for the lines
-    for i in 1:length(line_key_values)
-        trace_line     = PlotlyJS.scattergeo(;locationmode = "USA-states",
-                    lat = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]],
-                    lon = [line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]],
-                    mode = "lines",
-                    line_color = "black",
-                    line_width = 2) 
-        push!(traces, trace_line)
+        # Add traces for the nodes
+        for i in 1:length(bus_key_values)
+            trace_bus = PlotlyJS.scattergeo(;locationmode = "USA-states",
+                            lat = [bus_cords[bus_key_values[i]][1]],
+                            lon = [bus_cords[bus_key_values[i]][2]],
+                            marker_size = 8,
+                            marker_color = "blue",
+                            mode = "markers+text",
+                            text = bus_key_values[i]*results_by_node[bus_key_values[i]], # Show the technology sizing next to each node
+                            textposition = "right"
+                            )
+            push!(traces, trace_bus)
+        end
+
+        # Add traces for the lines
+        for i in 1:length(line_key_values)
+            trace_line     = PlotlyJS.scattergeo(;locationmode = "USA-states",
+                        lat = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]],
+                        lon = [line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]],
+                        mode = "lines",
+                        line_color = "black",
+                        line_width = 2) 
+            push!(traces, trace_line)
+        end
+        geo = PlotlyJS.attr(scope = "usa",
+                    projection_type = "albers usa",
+                    showland = true,
+                    landcolor = "rgb(217,217,217)",
+                    subunitwidth =1,
+                    countrywidth=1,
+                    fitbounds = "locations",
+                    subunitcolor = "rgb(255,255,255)",
+                    countrycolor = "rgb(255,255,255)")
+        layout = PlotlyJS.Layout(; title="Multinode Results and Layout", geo=geo,  showlegend = false)
+        
+        p = PlotlyJS.plot(traces,layout)
+        PlotlyJS.savefig(p, folder*"/Results_and_Layout.html")
     end
-    geo = PlotlyJS.attr(scope = "usa",
-                projection_type = "albers usa",
-                showland = true,
-                landcolor = "rgb(217,217,217)",
-                subunitwidth =1,
-                countrywidth=1,
-                fitbounds = "locations",
-                subunitcolor = "rgb(255,255,255)",
-                countrycolor = "rgb(255,255,255)")
-    layout = PlotlyJS.Layout(; title="Multinode Results and Layout", geo=geo,  showlegend = false)
     
-    p = PlotlyJS.plot(traces,layout)
-    PlotlyJS.savefig(p, folder*"/Results_and_Layout.html")
-    #PlotlyJS.savefig(p, folder*"/Results_and_Layout_StaticPlot.png")
 
-    #display(p)
+    if (plot_types == "static") || (plot_types=="dynamic+static")
+
+        if !(isempty(static_plot_parameters))
+            plot_size = static_plot_parameters["plot_size"]
+            plot_dpi = static_plot_parameters["plot_dpi"]
+            xlimits_multiplier = static_plot_parameters["xlimits_multiplier"]
+            ylimits_multiplier = static_plot_parameters["ylimits_multiplier"]
+            font_size = static_plot_parameters["font_size"]
+            bus_marker_size = static_plot_parameters["bus_marker_size"]
+            line_width = static_plot_parameters["line_width"]
+        else
+            plot_size = (1200,1200)
+            plot_dpi = 300
+            xlimits_multiplier = 0.3
+            ylimits_multiplier = 0.3
+            font_size = 12
+            bus_marker_size = 5
+            line_width = 2
+        end
+
+
+        for i in 1:length(line_key_values)
+            y_vector = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]]
+            x_vector = [line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]]
+            if i == 1
+                Plots.plot(x_vector, y_vector, lc="black", lw=line_width)
+            else
+                Plots.plot!(x_vector, y_vector, lc="black", lw=line_width)
+            end
+        end
+        
+        #Plots.scatter([bus_cords[bus_key_values[1]][1]], [bus_cords[bus_key_values[1]][2]], mc="blue",ms=8, label= bus_key_values[1]*results_by_node[bus_key_values[1]] )
+        for i in 1:length(bus_key_values)
+            bus_label = bus_key_values[i]*results_by_node[bus_key_values[i]]
+            Plots.scatter!( [bus_cords[bus_key_values[i]][2]], [bus_cords[bus_key_values[i]][1]],
+                            markercolor=:blue, markerstrokewidth=0, markersize=bus_marker_size, 
+                            axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi )
+        end
+
+       
+        # This section for the label placement was generated with the assistance of ChatGPT      
+        placed_labels = Tuple{Float64, Float64, Float64, Float64}[]
+        xmin, xmax = Plots.xlims()
+        ymin, ymax = Plots.ylims()
+        xscale = xmax - xmin
+        yscale = ymax - ymin
+        x_offset = 0.02 * xscale
+        y_step = 0.02 * yscale
+        for key in bus_key_values
+            y, x = bus_cords[key]
+            bus_label = string(key)*results_by_node[key]
+            half_w, half_h = label_box(bus_label, xscale, yscale)
+            x_label = x + x_offset + half_w
+            y_label = y
+            # vertical repositioning
+            attempts = 0
+            while test_overlaps(x_label, y_label, half_w, half_h, placed_labels) && (attempts < 50)
+                y_label += y_step
+                attempts += 1
+            end
+            push!(placed_labels, (x_label, y_label, half_w, half_h))
+            moved = (y_label != y)
+            # Draw an line only if the label was moved
+            if moved
+                x_end = x_label - half_w
+                y_end = clamp(y, y_label - (0.25*half_h), y_label + (0.25*half_h))
+                plot!([x, x_end], [y, y_end], lw=0.5, lc="black", legend=false)
+            end
+            Plots.annotate!(x_label, y_label, Plots.text(bus_label, :right, :bottom, font_size))
+        end
+
+
+        x_range = xmax - xmin
+        y_range = ymax - ymin
+        Plots.xlims!(xmin - (xlimits_multiplier * x_range), xmax + (xlimits_multiplier * x_range))
+        Plots.ylims!(ymin - (ylimits_multiplier * y_range), ymax + (ylimits_multiplier * y_range))
+
+        
+        display(Plots.title!("Results and Layout"))
+
+        Plots.savefig(folder*"/Results_and_Layout_StaticPlot.png")
+
+    end
+end
+
+
+function calculate_max_and_min(line_cords, line_key_values)
+        min_x = 0
+        max_x = 0
+        min_y = 0
+        max_y = 0
+
+        x_vector = [line_cords[line_key_values[1]][1][1], line_cords[line_key_values[1]][2][1]]
+        y_vector = [line_cords[line_key_values[1]][1][2], line_cords[line_key_values[1]][2][2]]
+   
+        min_x = minimum(x_vector)
+        max_x = maximum(x_vector)
+        min_y = minimum(y_vector)
+        max_y = maximum(y_vector)
+
+        for i in 2:length(line_key_values)
+            if maximum(x_vector) > max_x
+                max_x = maximum(x_vector)
+            end
+            if minimum(x_vector) < min_x
+                min_x = minimum(x_vector)
+            end
+            
+            if maximum(y_vector) > max_y
+                max_y = maximum(y_vector)
+            end
+            if minimum(y_vector) < min_y
+                min_y = minimum(y_vector)
+            end
+            
+        end
+
+    return  min_x, max_x, min_y, max_y
+end
+
+
+function label_box(label, xscale, yscale)
+    # This function was generated with the assistance of ChatGPT
+    character_width = 0.012*xscale
+    character_height = 0.035*yscale
+
+    half_w = length(label) * character_width / 2
+    half_h = character_height / 2
+
+    return half_w, half_h
+end
+
+
+function test_overlaps(x, y, hw, hh, placed)
+    # This function was generated with the assistance of ChatGPT
+    any(abs(x-px) < (hw + phw) &&
+        abs(y - py) < (hh + phh) 
+        for (px, py, phw, phh) in placed)
+
 end
 
 
@@ -490,7 +631,7 @@ function Aggregated_PowerFlows_Plot(results, TimeStamp, Multinode_Inputs, REoptI
 end
  
 
-function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength)
+function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info; file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types="dynamic+static", static_plot_parameters=Dict())
     # This function plots the power flows through the network
 
     Multinode_Inputs = results["Multinode_Inputs"]
@@ -682,78 +823,224 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     # Convert all of the characters to lower case
     line_cords = Dict(lowercase(String(key)) => value for (key,value) in line_cords)
     bus_cords = Dict(lowercase(String(key)) => value for (key,value) in bus_cords)
-                                                                                    
-    frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
-            data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))], 
-            name = "time=$(j)",
-            layout=PlotlyJS.attr(title_text="Power Flow Time Series Animation, from  $(start_datetime)  to  $(end_datetime)", 
-                                 xaxis_title_text = "",
-                                 yaxis_title_text = "",
-                                 annotations = vcat([PlotlyJS.attr(x=x1,y=y0[i],text=string(Color_bins[i])*" kW", xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)],
-                                                    [PlotlyJS.attr(x=x1,y=y0[1] - stepsize,text="0 kW", xanchor="left", yanchor="center", showarrow=false)], 
-                                                    [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
-                                                    [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
-                                                    [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
-                                                    phase_labels,
-                                                    [PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]),
-             
-                                 shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
-                                                         x0= Symbol_data_inputs[line_key_values[k]][1][1], 
-                                                         y0= Symbol_data_inputs[line_key_values[k]][1][2], 
-                                                         x1= Symbol_data_inputs[line_key_values[k]][3][j], 
-                                                         y1= Symbol_data_inputs[line_key_values[k]][4][j], 
-                                                         line = PlotlyJS.attr(color=line_colors[line_key_values[k]][j]), 
-                                                         ) for k in 1:length(line_cords)],
-                                                [PlotlyJS.line(xref='x', yref='y', 
-                                                         x0= Symbol_data_inputs[line_key_values[k]][1][1], 
-                                                         y0= Symbol_data_inputs[line_key_values[k]][1][2], 
-                                                         x1= Symbol_data_inputs[line_key_values[k]][5][j], 
-                                                         y1= Symbol_data_inputs[line_key_values[k]][6][j], 
-                                                         line = PlotlyJS.attr(color=line_colors[line_key_values[k]][j]), 
-                                                         ) for k in 1:length(line_cords)],
-                                               [PlotlyJS.rect(x0=x0, y0= y0[i], x1=x1, y1=y1[i], fillcolor=Colors[i], line=PlotlyJS.attr(width=0), xref='x',yref='y') for i in collect(1:(increments-1))],
-                                               [PlotlyJS.rect(x0=x0, y0= y0[1] - stepsize - (stepsize/2), x1=x1, y1=y1[1] - stepsize - (stepsize/2), fillcolor="rgb(127, 137, 145)", line=PlotlyJS.attr(width=0), xref='x',yref='y')]
-                                               )
-                                )) for j in timesteps]
     
-    steps_days = [Dates.format(DateTime(2021, 1, 1) + Day(floor(day)) + Second(round(60*60*24*(day - floor(day)))), "U d at HH:MM") for day in (collect(1:model_total_timesteps)/(24*Multinode_Inputs.time_steps_per_hour))]# This line of code is based off of code suggested by generative AI
     
-    steps = [PlotlyJS.attr(method = "animate",
-            args = [["time=$(i)"], PlotlyJS.attr(frame=PlotlyJS.attr(duration=500, redraw=true), mode="immediate", transition=PlotlyJS.attr(duration=0))],
-            label = steps_days[i]*" (ts=$(i))") for i in timesteps]
-    layout = PlotlyJS.Layout(
-        showlegend=false,
-        editable=true,
-        xaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='y', scaleratio = scaleratio_input),
-        yaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='x'),
-                     
-        sliders=[PlotlyJS.attr(yanchor="top", 
-                    xanchor="left",
-                    currentvalue=PlotlyJS.attr(prefix="Day: ", visible=true, font_size=12),
-                    steps=steps,
-                    active=0,
-                    minorticklen=0
-                    )],
-        updatemenus = [PlotlyJS.attr(
-            type="buttons",
-            showactive=false,
-            buttons=[
-                PlotlyJS.attr(
-                    label="Animate", method="animate",
-                    args=[nothing,PlotlyJS.attr(transition=PlotlyJS.attr(duration=0),fromcurrent=true, visible=true, frame=PlotlyJS.attr(duration=500, redraw=true), mode="immediate")]),
-                PlotlyJS.attr(
-                    label="Pause", method="animate",
-                    args=[[nothing],PlotlyJS.attr(transition=PlotlyJS.attr(duration=0), mode="immediate")])
-        ])])
-    
-    data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][timesteps[1]], dash=line_type[line_key_values[i]])) for i in 1:length(line_cords)]
+    if (plot_types == "dynamic") || (plot_types=="dynamic+static")
+
+        frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
+                data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))], 
+                name = "time=$(j)",
+                layout=PlotlyJS.attr(title_text="Power Flow Time Series Animation, from  $(start_datetime)  to  $(end_datetime)", 
+                                    xaxis_title_text = "",
+                                    yaxis_title_text = "",
+                                    annotations = vcat([PlotlyJS.attr(x=x1,y=y0[i],text=string(Color_bins[i])*" kW", xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)],
+                                                        [PlotlyJS.attr(x=x1,y=y0[1] - stepsize,text="0 kW", xanchor="left", yanchor="center", showarrow=false)], 
+                                                        [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
+                                                        [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
+                                                        [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
+                                                        phase_labels,
+                                                        [PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]),
+                
+                                    shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
+                                                            x0= Symbol_data_inputs[line_key_values[k]][1][1], 
+                                                            y0= Symbol_data_inputs[line_key_values[k]][1][2], 
+                                                            x1= Symbol_data_inputs[line_key_values[k]][3][j], 
+                                                            y1= Symbol_data_inputs[line_key_values[k]][4][j], 
+                                                            line = PlotlyJS.attr(color=line_colors[line_key_values[k]][j]), 
+                                                            ) for k in 1:length(line_cords)],
+                                                    [PlotlyJS.line(xref='x', yref='y', 
+                                                            x0= Symbol_data_inputs[line_key_values[k]][1][1], 
+                                                            y0= Symbol_data_inputs[line_key_values[k]][1][2], 
+                                                            x1= Symbol_data_inputs[line_key_values[k]][5][j], 
+                                                            y1= Symbol_data_inputs[line_key_values[k]][6][j], 
+                                                            line = PlotlyJS.attr(color=line_colors[line_key_values[k]][j]), 
+                                                            ) for k in 1:length(line_cords)],
+                                                [PlotlyJS.rect(x0=x0, y0= y0[i], x1=x1, y1=y1[i], fillcolor=Colors[i], line=PlotlyJS.attr(width=0), xref='x',yref='y') for i in collect(1:(increments-1))],
+                                                [PlotlyJS.rect(x0=x0, y0= y0[1] - stepsize - (stepsize/2), x1=x1, y1=y1[1] - stepsize - (stepsize/2), fillcolor="rgb(127, 137, 145)", line=PlotlyJS.attr(width=0), xref='x',yref='y')]
+                                                )
+                                    )) for j in timesteps]
+        
+        steps_days = [Dates.format(DateTime(2021, 1, 1) + Day(floor(day)) + Second(round(60*60*24*(day - floor(day)))), "U d at HH:MM") for day in (collect(1:model_total_timesteps)/(24*Multinode_Inputs.time_steps_per_hour))]# This line of code is based off of code suggested by generative AI
+        
+        steps = [PlotlyJS.attr(method = "animate",
+                args = [["time=$(i)"], PlotlyJS.attr(frame=PlotlyJS.attr(duration=500, redraw=true), mode="immediate", transition=PlotlyJS.attr(duration=0))],
+                label = steps_days[i]*" (ts=$(i))") for i in timesteps]
+        layout = PlotlyJS.Layout(
+            showlegend=false,
+            editable=true,
+            xaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='y', scaleratio = scaleratio_input),
+            yaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='x'),
+                        
+            sliders=[PlotlyJS.attr(yanchor="top", 
+                        xanchor="left",
+                        currentvalue=PlotlyJS.attr(prefix="Day: ", visible=true, font_size=12),
+                        steps=steps,
+                        active=0,
+                        minorticklen=0
+                        )],
+            updatemenus = [PlotlyJS.attr(
+                type="buttons",
+                showactive=false,
+                buttons=[
+                    PlotlyJS.attr(
+                        label="Animate", method="animate",
+                        args=[nothing,PlotlyJS.attr(transition=PlotlyJS.attr(duration=0),fromcurrent=true, visible=true, frame=PlotlyJS.attr(duration=500, redraw=true), mode="immediate")]),
+                    PlotlyJS.attr(
+                        label="Pause", method="animate",
+                        args=[[nothing],PlotlyJS.attr(transition=PlotlyJS.attr(duration=0), mode="immediate")])
+            ])])
+        
+        data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][timesteps[1]], dash=line_type[line_key_values[i]])) for i in 1:length(line_cords)]
+                
+        config= PlotlyJS.PlotConfig(editable=true)
+        p = PlotlyJS.Plot(data, layout, frames; config=config)
+        PlotlyJS.savefig(p, folder*"/PowerFlowAnimation"*file_suffix*".html")       
+    end
+
+    if (plot_types == "static") || (plot_types=="dynamic+static")
+
+        mkdir(folder*"/Static_powerflow_plots_per_timestep")
+
+        for j in timesteps
+
+            timestep_day = j/(24*Multinode_Inputs.time_steps_per_hour)
+
+            #for i in collect(1:length(line_cords))
+            #    Plots.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j]))
+            #end 
+
+            label_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(timestep_day)) + Second(round(60*60*24*(timestep_day - floor(timestep_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
             
-    config= PlotlyJS.PlotConfig(editable=true)
+           
+            if !(isempty(static_plot_parameters))
+                plot_size = static_plot_parameters["plot_size"]
+                plot_dpi = static_plot_parameters["plot_dpi"]
+                xlimits_multiplier = static_plot_parameters["xlimits_multiplier"]
+                ylimits_multiplier = static_plot_parameters["ylimits_multiplier"]
+                font_size = static_plot_parameters["font_size"]
+                bus_marker_size = static_plot_parameters["bus_marker_size"]
+                line_width = static_plot_parameters["line_width"]
+            else
+                plot_size = (1200,1200)
+                plot_dpi = 300
+                xlimits_multiplier = 0.3
+                ylimits_multiplier = 0.3
+                font_size = 12
+                bus_marker_size = 5
+                line_width = 2
+            end
 
-    p = PlotlyJS.Plot(data, layout, frames; config=config)
 
-    PlotlyJS.savefig(p, folder*"/PowerFlowAnimation"*file_suffix*".html")
-    
+            for i in 1:length(line_key_values)
+                y_vector = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]]
+                x_vector = [line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]]
+                if i == 1
+                    Plots.plot(x_vector, y_vector, lc=line_colors[line_key_values[i]][j], lw=line_width)
+                else
+                    Plots.plot!(x_vector, y_vector, lc=line_colors[line_key_values[i]][j], lw=line_width)
+                end
+            end
+            
+            #Plots.scatter([bus_cords[bus_key_values[1]][1]], [bus_cords[bus_key_values[1]][2]], mc="blue",ms=8, label= bus_key_values[1]*results_by_node[bus_key_values[1]] )
+            for i in 1:length(bus_key_values)
+                bus_label = bus_key_values[i]*results_by_node[bus_key_values[i]]
+                Plots.scatter!([bus_cords[bus_key_values[i]][2]], [bus_cords[bus_key_values[i]][1]],
+                                markercolor=:blue, markerstrokewidth=0, markersize=bus_marker_size, 
+                                axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi )
+            end
+
+        
+            # This section for the label placement was generated with the assistance of ChatGPT      
+            placed_labels = Tuple{Float64, Float64, Float64, Float64}[]
+            xmin, xmax = Plots.xlims()
+            ymin, ymax = Plots.ylims()
+            xscale = xmax - xmin
+            yscale = ymax - ymin
+            x_offset = 0.02 * xscale
+            y_step = 0.02 * yscale
+            for key in bus_key_values
+                y, x = bus_cords[key]
+                bus_label = string(key)*results_by_node[key]
+                half_w, half_h = label_box(bus_label, xscale, yscale)
+                x_label = x + x_offset + half_w
+                y_label = y
+                # vertical repositioning
+                attempts = 0
+                while test_overlaps(x_label, y_label, half_w, half_h, placed_labels) && (attempts < 50)
+                    y_label += y_step
+                    attempts += 1
+                end
+                push!(placed_labels, (x_label, y_label, half_w, half_h))
+                moved = (y_label != y)
+                # Draw an line only if the label was moved
+                if moved
+                    x_end = x_label - half_w
+                    y_end = clamp(y, y_label - (0.25*half_h), y_label + (0.25*half_h))
+                    plot!([x, x_end], [y, y_end], lw=0.5, lc="black", legend=false)
+                end
+                Plots.annotate!(x_label, y_label, Plots.text(bus_label, :right, :bottom, font_size))
+            end
+
+            for i in collect(1:increments)
+                Plots.annotate!(x1, y0[i], Plots.text(string(Color_bins[i])*" kW", :left, :bottom))
+            end
+            Plots.annotate!(x1,y0[1] - stepsize, Plots.text("0 kW", :left, :bottom))
+            Plots.annotate!(x1,y1[increments], Plots.text("Power (kW)", :center, :bottom))
+            Plots.annotate!(substation_cords[2], substation_cords[1], Plots.text(PowerOutageIndicator[j],  :right, :bottom))
+            Plots.annotate!(x1, y1[increments]+stepsize+(stepsize/2), Plots.text(PowerFlowModelIndicator[j], :right, :bottom))
+            
+            
+            #[PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]),
+            
+            # Add phase labels:
+            for k in 1:length(line_cords)
+                Plots.annotate!(Symbol_data_inputs[line_key_values[k]][1][1], Symbol_data_inputs[line_key_values[k]][1][2],
+                                            Plots.text("Ø"*string(phase_information[line_key_values[k]]), :left, :bottom, 6))
+            end
+            
+            # Plot one half of the arrow
+            for k in 1:length(line_cords)
+                Plots.plot!([Symbol_data_inputs[line_key_values[k]][1][1], Symbol_data_inputs[line_key_values[k]][3][j]], 
+                            [Symbol_data_inputs[line_key_values[k]][1][2], Symbol_data_inputs[line_key_values[k]][4][j]], 
+                            lc=line_colors[line_key_values[k]][j], lw=line_width)
+            end
+
+            # Plot the other half of the arrow
+            for k in 1:length(line_cords)
+                Plots.plot!([Symbol_data_inputs[line_key_values[k]][1][1], Symbol_data_inputs[line_key_values[k]][5][j]], 
+                            [Symbol_data_inputs[line_key_values[k]][1][2], Symbol_data_inputs[line_key_values[k]][6][j]], 
+                            lc=line_colors[line_key_values[k]][j], lw=line_width)
+            end
+
+            for i in collect(1:(increments-1))
+                Plots.plot!(Plots.Shape([x0, x0, x1, x1],[y0[i], y1[i], y1[i], y0[i]]), color=Colors[i])
+            end
+
+            grey_box_y_value_0 = y0[1] - stepsize - (stepsize/2)
+            grey_box_y_value_1 = y1[1] - stepsize - (stepsize/2)
+            
+            Plots.plot!(Plots.Shape([x0, x0, x1, x1],[grey_box_y_value_0, grey_box_y_value_1, grey_box_y_value_1, grey_box_y_value_0]), color="rgb(127, 137, 145)")
+
+            #PlotlyJS.rect(x0=x0, y0= y0[i], x1=x1, y1=y1[i], fillcolor=Colors[i], line=PlotlyJS.attr(width=0), xref='x',yref='y')
+            #[PlotlyJS.rect(x0=x0, y0= y0[1] , x1=x1, y1=y1[1] , fillcolor=, line=PlotlyJS.attr(width=0), xref='x',yref='y')]
+                                
+            x_range = xmax - xmin
+            y_range = ymax - ymin
+            Plots.xlims!(xmin - (xlimits_multiplier * x_range), xmax + (xlimits_multiplier * x_range))
+            Plots.ylims!(ymin - (ylimits_multiplier * y_range), ymax + (ylimits_multiplier * y_range))
+
+            display(Plots.title!("Powerflow Results and Layout"))
+
+            Plots.savefig(folder*"/Static_powerflow_plots_per_timestep/Powerflow_Results_and_Layout_StaticPlot_timestep$(j).png")
+           
+        end
+
+        frames = "N/A"
+        layout= "N/A"
+        steps="N/A"
+        data="N/A"
+    end
+ 
     return frames, layout, steps, line_cords, bus_cords, data,  bus_key_values, line_key_values, line_colors, timesteps, powerflow, Symbol_data_inputs
 end
 
