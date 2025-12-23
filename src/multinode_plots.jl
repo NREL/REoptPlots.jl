@@ -824,7 +824,6 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
     line_cords = Dict(lowercase(String(key)) => value for (key,value) in line_cords)
     bus_cords = Dict(lowercase(String(key)) => value for (key,value) in bus_cords)
     
-    
     if (plot_types == "dynamic") || (plot_types=="dynamic+static")
 
         frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
@@ -902,16 +901,8 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
         mkdir(folder*"/Static_powerflow_plots_per_timestep")
 
         for j in timesteps
-
             timestep_day = j/(24*Multinode_Inputs.time_steps_per_hour)
-
-            #for i in collect(1:length(line_cords))
-            #    Plots.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j]))
-            #end 
-
-            label_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(timestep_day)) + Second(round(60*60*24*(timestep_day - floor(timestep_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
             
-           
             if !(isempty(static_plot_parameters))
                 plot_size = static_plot_parameters["plot_size"]
                 plot_dpi = static_plot_parameters["plot_dpi"]
@@ -923,13 +914,12 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             else
                 plot_size = (1200,1200)
                 plot_dpi = 300
-                xlimits_multiplier = 0.3
-                ylimits_multiplier = 0.3
+                xlimits_multiplier = 0.2
+                ylimits_multiplier = 0.2
                 font_size = 12
                 bus_marker_size = 5
                 line_width = 2
             end
-
 
             for i in 1:length(line_key_values)
                 y_vector = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]]
@@ -941,7 +931,6 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                 end
             end
             
-            #Plots.scatter([bus_cords[bus_key_values[1]][1]], [bus_cords[bus_key_values[1]][2]], mc="blue",ms=8, label= bus_key_values[1]*results_by_node[bus_key_values[1]] )
             for i in 1:length(bus_key_values)
                 bus_label = bus_key_values[i]*results_by_node[bus_key_values[i]]
                 Plots.scatter!([bus_cords[bus_key_values[i]][2]], [bus_cords[bus_key_values[i]][1]],
@@ -949,7 +938,6 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                                 axis=false, grid=false, legend=false, size=plot_size, dpi=plot_dpi )
             end
 
-        
             # This section for the label placement was generated with the assistance of ChatGPT      
             placed_labels = Tuple{Float64, Float64, Float64, Float64}[]
             xmin, xmax = Plots.xlims()
@@ -982,16 +970,13 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             end
 
             for i in collect(1:increments)
-                Plots.annotate!(x1, y0[i], Plots.text(string(Color_bins[i])*" kW", :left, :bottom))
+                Plots.annotate!(x1, y0[i], Plots.text(" "*string(Color_bins[i])*" kW"; halign = :left, valign = :center))
             end
-            Plots.annotate!(x1,y0[1] - stepsize, Plots.text("0 kW", :left, :bottom))
-            Plots.annotate!(x1,y1[increments], Plots.text("Power (kW)", :center, :bottom))
-            Plots.annotate!(substation_cords[2], substation_cords[1], Plots.text(PowerOutageIndicator[j],  :right, :bottom))
+            Plots.annotate!(x1,y0[1] - stepsize, Plots.text("0 kW"; halign = :left, valign = :center))
+            Plots.annotate!(x1,y1[increments], Plots.text("Power (kW)"; halign = :center, valign = :top))
+            Plots.annotate!(substation_cords[2], substation_cords[1], Plots.text(PowerOutageIndicator[j],  :right, :top))
             Plots.annotate!(x1, y1[increments]+stepsize+(stepsize/2), Plots.text(PowerFlowModelIndicator[j], :right, :bottom))
-            
-            
-            #[PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]),
-            
+                        
             # Add phase labels:
             for k in 1:length(line_cords)
                 Plots.annotate!(Symbol_data_inputs[line_key_values[k]][1][1], Symbol_data_inputs[line_key_values[k]][1][2],
@@ -1012,24 +997,23 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                             lc=line_colors[line_key_values[k]][j], lw=line_width)
             end
 
+            # Plot the legend
             for i in collect(1:(increments-1))
-                Plots.plot!(Plots.Shape([x0, x0, x1, x1],[y0[i], y1[i], y1[i], y0[i]]), color=Colors[i])
+                Plots.plot!(Plots.Shape([x0, x0, x1, x1],[y0[i], y1[i], y1[i], y0[i]]), color=Colors[i], lw=0)
             end
 
             grey_box_y_value_0 = y0[1] - stepsize - (stepsize/2)
             grey_box_y_value_1 = y1[1] - stepsize - (stepsize/2)
             
-            Plots.plot!(Plots.Shape([x0, x0, x1, x1],[grey_box_y_value_0, grey_box_y_value_1, grey_box_y_value_1, grey_box_y_value_0]), color="rgb(127, 137, 145)")
-
-            #PlotlyJS.rect(x0=x0, y0= y0[i], x1=x1, y1=y1[i], fillcolor=Colors[i], line=PlotlyJS.attr(width=0), xref='x',yref='y')
-            #[PlotlyJS.rect(x0=x0, y0= y0[1] , x1=x1, y1=y1[1] , fillcolor=, line=PlotlyJS.attr(width=0), xref='x',yref='y')]
+            Plots.plot!(Plots.Shape([x0, x0, x1, x1],[grey_box_y_value_0, grey_box_y_value_1, grey_box_y_value_1, grey_box_y_value_0]), color="rgb(127, 137, 145)", lw=0)
                                 
             x_range = xmax - xmin
             y_range = ymax - ymin
             Plots.xlims!(xmin - (xlimits_multiplier * x_range), xmax + (xlimits_multiplier * x_range))
             Plots.ylims!(ymin - (ylimits_multiplier * y_range), ymax + (ylimits_multiplier * y_range))
 
-            display(Plots.title!("Powerflow Results and Layout"))
+            label_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(timestep_day)) + Second(round(60*60*24*(timestep_day - floor(timestep_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
+            display(Plots.title!("Powerflow Results and Layout: $(label_datetime)"))
 
             Plots.savefig(folder*"/Static_powerflow_plots_per_timestep/Powerflow_Results_and_Layout_StaticPlot_timestep$(j).png")
            
