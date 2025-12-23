@@ -1013,7 +1013,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             Plots.ylims!(ymin - (ylimits_multiplier * y_range), ymax + (ylimits_multiplier * y_range))
 
             label_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(timestep_day)) + Second(round(60*60*24*(timestep_day - floor(timestep_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
-            display(Plots.title!("Powerflow Results and Layout: $(label_datetime)"))
+            display(Plots.title!("Powerflow Results and Layout: $(label_datetime) (time step $(j))"))
 
             Plots.savefig(folder*"/Static_powerflow_plots_per_timestep/Powerflow_Results_and_Layout_StaticPlot_timestep$(j).png")
            
