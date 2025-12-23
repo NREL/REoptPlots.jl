@@ -972,7 +972,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             for i in collect(1:increments)
                 Plots.annotate!(x1, y0[i], Plots.text(" "*string(Color_bins[i])*" kW"; halign = :left, valign = :center))
             end
-            Plots.annotate!(x1,y0[1] - stepsize, Plots.text("0 kW"; halign = :left, valign = :center))
+            Plots.annotate!(x1,y0[1] - stepsize, Plots.text(" 0 kW"; halign = :left, valign = :center))
             Plots.annotate!(x1,y1[increments], Plots.text("Power (kW)"; halign = :center, valign = :top))
             Plots.annotate!(substation_cords[2], substation_cords[1], Plots.text(PowerOutageIndicator[j],  :right, :top))
             Plots.annotate!(x1, y1[increments]+stepsize+(stepsize/2), Plots.text(PowerFlowModelIndicator[j], :right, :bottom))
