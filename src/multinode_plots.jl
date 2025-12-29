@@ -57,6 +57,10 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
     TimeStamp = data_dictionary_for_plots["TimeStamp"]
     CompiledResults = data_dictionary_for_plots["CompiledResults"]
 
+    # Create a folder for the results
+    folder = filepath_for_saving_plots*"/plots_"*TimeStamp
+    mkdir(folder)
+
     phases_for_each_line =  REopt.create_dictionary_of_phases_for_each_line(data_eng)  # Initiate this dictionary with just the phases for each line; 
     phases_for_each_line_and_transformer_line, lines, transformer_busses = REopt.add_transformer_lines_to_the_dictionary(data_eng, collect(keys(data_eng["line"])), phases_for_each_line) # Then add the line IDs and phases for each transformer, representing the transformers as lines
     all_lines_including_transformers_as_lines =  collect(keys(phases_for_each_line_and_transformer_line))
@@ -88,11 +92,6 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
     if data_dictionary_for_plots["voltage_plot_time_step"] > length(Multinode_Inputs.PMD_time_steps)
         throw(@error("In the Multinode_Inputs dictionary, the voltage_plot_time_step should be less than or equal to the number of timesteps in PMD_time_steps"))
     end
-
-    # Create a folder for the results
-    folder = filepath_for_saving_plots*"/plots_"*TimeStamp
-    mkdir(folder)
-
 
     # Plot outage simulator results if the outage simulator was run
     if Multinode_Inputs.run_outage_simulator
@@ -837,20 +836,39 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             bus_labels = []
         end
 
+        
+        
+        #vcat([PlotlyJS.attr(x=x1,y=y0[i],text=string(Color_bins[i])*" kW", xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)],
+        #                                                [PlotlyJS.attr(x=x1,y=y0[1] - stepsize,text="0 kW", xanchor="left", yanchor="center", showarrow=false)], 
+        #                                                [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
+        #                                                [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
+        #                                                [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
+        #)
+        annotations_baseline = []
+        annotations_baseline_with_bus_and_phase_labels = vcat(phase_labels, bus_labels)
+        
+        # Define the unchanging annotations as scatter plot data point labels to avoid issues with having annotations defined in each frame and in the overall plot layout
         frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
-                data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))], 
+                data = vcat([PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))],
+                            [PlotlyJS.scatter(x=[x1],y=[y0[1] - stepsize],text="0 kW", mode="text", textposition="middle right")], 
+                            [PlotlyJS.scatter(x=[x1],y=[y0[i]], text=string(Color_bins[i])*" kW", mode="text", textposition="middle right") for i in collect(1:increments)],
+                            [PlotlyJS.scatter(x=[x1],y=[y1[increments]],text="Power (kW)", mode="text", textposition="middle right")],
+                            [PlotlyJS.scatter(x=[substation_cords[2]], y=[substation_cords[1]], text=PowerOutageIndicator[j], mode="text", textposition="middle right")],
+                            [PlotlyJS.scatter(x=[x1], y=[y1[increments]+stepsize+(stepsize/2)], text=PowerFlowModelIndicator[j], mode="text", textposition="middle right")]
+                           ),
+
                 name = "time=$(j)",
                 layout=PlotlyJS.attr(title_text="Power Flow Time Series Animation, from  $(start_datetime)  to  $(end_datetime)", 
                                     xaxis_title_text = "",
                                     yaxis_title_text = "",
-                                    annotations = vcat([PlotlyJS.attr(x=x1,y=y0[i],text=string(Color_bins[i])*" kW", xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)],
-                                                        [PlotlyJS.attr(x=x1,y=y0[1] - stepsize,text="0 kW", xanchor="left", yanchor="center", showarrow=false)], 
-                                                        [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
-                                                        [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
-                                                        [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
-                                                        phase_labels,
-                                                        bus_labels
-                                    ),
+                                    #annotations = vcat([PlotlyJS.attr(x=x1,y=y0[i],text=string(Color_bins[i])*" kW", xanchor="left", yanchor="center", showarrow=false) for i in collect(1:increments)],
+                                    #                    [PlotlyJS.attr(x=x1,y=y0[1] - stepsize,text="0 kW", xanchor="left", yanchor="center", showarrow=false)], 
+                                    #                    [PlotlyJS.attr(x=x1,y=y1[increments],text="Power (kW)", xanchor="center", yanchor="bottom", showarrow=false)],
+                                    #                    [PlotlyJS.attr(x=substation_cords[2], y=substation_cords[1], text=PowerOutageIndicator[j], font = PlotlyJS.attr(color="red", size = 16), xanchor="left", yanchor="bottom", showarrow=false)],
+                                    #                    [PlotlyJS.attr(x=x1, y=y1[increments]+stepsize+(stepsize/2), text=PowerFlowModelIndicator[j], font = PlotlyJS.attr(color="black", size = 16), xanchor="right", yanchor="bottom", showarrow=false)],
+                                    #                    phase_labels,
+                                    #                    bus_labels
+                                    #),
                 
                                     shapes = vcat([PlotlyJS.line(xref='x', yref='y', 
                                                             x0= Symbol_data_inputs[line_key_values[k]][1][1], 
@@ -881,7 +899,7 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
             editable=true,
             xaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='y', scaleratio = scaleratio_input),
             yaxis = PlotlyJS.attr(showticklabels=false, scaleanchor='x'),
-                        
+            annotations = annotations_baseline_with_bus_and_phase_labels,           
             sliders=[PlotlyJS.attr(yanchor="top", 
                         xanchor="left",
                         currentvalue=PlotlyJS.attr(prefix="Day: ", visible=true, font_size=12),
@@ -898,11 +916,27 @@ function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREop
                         args=[nothing,PlotlyJS.attr(transition=PlotlyJS.attr(duration=0),fromcurrent=true, visible=true, frame=PlotlyJS.attr(duration=500, redraw=true), mode="immediate")]),
                     PlotlyJS.attr(
                         label="Pause", method="animate",
-                        args=[[nothing],PlotlyJS.attr(transition=PlotlyJS.attr(duration=0), mode="immediate")])
-            ])])
+                        args=[[nothing],PlotlyJS.attr(transition=PlotlyJS.attr(duration=0), mode="immediate")]),
+                    PlotlyJS.attr(
+                        label = "Show bus, results, and phase labels",
+                        method = "relayout",
+                        args=[PlotlyJS.attr(annotations=annotations_baseline_with_bus_and_phase_labels)]
+                    ),
+                    PlotlyJS.attr(
+                        label = "Hide bus, results, and phase labels",
+                        method = "relayout",
+                        args=[PlotlyJS.attr(annotations=annotations_baseline)]
+                    )
+                    ])])
         
-        data = [PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][timesteps[1]], dash=line_type[line_key_values[i]])) for i in 1:length(line_cords)]
-                
+        data = vcat([PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][timesteps[1]], dash=line_type[line_key_values[i]])) for i in 1:length(line_cords)],
+                    [PlotlyJS.scatter(x=[x1],y=[y0[1] - stepsize],text="0 kW", mode="text", textposition="middle right")], 
+                    [PlotlyJS.scatter(x=[x1],y=[y0[i]], text=string(Color_bins[i])*" kW", mode="text", textposition="middle right") for i in collect(1:increments)],
+                    [PlotlyJS.scatter(x=[x1],y=[y1[increments]],text="Power (kW)", mode="text", textposition="middle right")],
+                    [PlotlyJS.scatter(x=[substation_cords[2]], y=[substation_cords[1]], text=PowerOutageIndicator[timesteps[1]], mode="text", textposition="middle right")],
+                    [PlotlyJS.scatter(x=[x1], y=[y1[increments]+stepsize+(stepsize/2)], text=PowerFlowModelIndicator[timesteps[1]], mode="text", textposition="middle right")]
+                    )
+
         config= PlotlyJS.PlotConfig(editable=true)
         p = PlotlyJS.Plot(data, layout, frames; config=config)
         PlotlyJS.savefig(p, folder*"/PowerFlowAnimation"*file_suffix*".html")       
