@@ -138,9 +138,9 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
         lines_in_PMD = collect(keys(data_eng["line"])) # Vector of line names based on data in PMD (which doesn't represent the transformers as lines)  
         busses_in_PMD = collect(keys(data_eng["bus"]))
 
-        #REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=plot_bus_labels, plot_phase_labels=plot_phase_labels, powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
+        REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=plot_bus_labels, plot_phase_labels=plot_phase_labels, powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
 
-        #REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["substation_power_flow"], folder)
+        REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["substation_power_flow"], folder)
 
         REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=plot_bus_labels, plot_phase_labels=plot_phase_labels, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
     end
