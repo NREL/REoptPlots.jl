@@ -45,7 +45,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         xaxis_rangeslider_visible=true,
         legend=attr(x=1.17, y=0.5, font=attr(size=14,color="black")))
     
-    tech_names  = ["ElectricUtility", "PV", "ElectricStorage", "Generator", "Wind", "CHP", "GHP"]
+    tech_names  = ["ElectricUtility", "PV", "ElectricStorage", "Generator", "Wind", "CHP", "SteamTurbine"]
     eload = d["ElectricLoad"]["load_series_kw"]
     keys = ["storage_to_load_series_kw", "storage_to_grid_series_kw", "electric_to_load_series_kw", "electric_to_grid_series_kw", "electric_to_storage_series_kw", "electric_curtailed_series_kw"]
 
@@ -82,7 +82,11 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         "electric_to_load_series_kw" => "darkorange2"
 
     )
-    # TODO: add GHP to colors 
+    colors["SteamTurbine"] = Dict(
+        "electric_to_load_series_kw" => "lightsteelblue",
+        "electric_to_grid_series_kw" => "steelblue",
+        "electric_to_storage_series_kw" => "lightslategray"
+    )
 
     # Define the start and end time for the date and time array
     start_time = DateTime(year, 1, 1, 0, 0, 0)
@@ -150,11 +154,29 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     end
 
     ### REopt Data Plotting Begins
-    ### Total Electric Load Line Plot
+    ### BAU Electric Load Line Plot
+    # Dotted line for BAU electric load
+    push!(traces, scatter(;
+        name = "BAU Electric Load",
+        x = dr_v,
+        y = d["ElectricLoad"]["load_series_kw"],
+        mode = "lines",
+        fill = nothing,
+        line=attr(width=1, color="black", dash="dot")
+    ))
+    # Sum all series that contain "electric_to_load_series_kw" or "storage_to_load_series_kw" to get total electric load line plot
+    total_load = sum(
+        get(d[tech], "electric_to_load_series_kw", zeros(length(dr_v))) +
+        get(d[tech], "storage_to_load_series_kw", zeros(length(dr_v)))
+        for tech in tech_names if haskey(d, tech) && 
+            (haskey(d[tech], "electric_to_load_series_kw") || haskey(d[tech], "storage_to_load_series_kw")) && 
+            (!isempty(get(d[tech], "electric_to_load_series_kw", [])) || !isempty(get(d[tech], "storage_to_load_series_kw", []))) && 
+            (sum(get(d[tech], "electric_to_load_series_kw", [0.0])) != 0.0 || sum(get(d[tech], "storage_to_load_series_kw", [0.0])) != 0.0)
+    )
     push!(traces, scatter(;
         name = "Total Electric Load",
         x = dr_v,
-        y = d["ElectricLoad"]["load_series_kw"],
+        y = total_load,
         mode = "lines",
         fill = nothing,
         line=attr(width=1, color="black")
