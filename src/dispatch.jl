@@ -420,78 +420,78 @@ function plot_heating_thermal_dispatch(d::Dict; title="Thermal Systems Dispatch"
     colors = Dict()
 
     colors["CHP"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(65, 105, 225, 1.0)",   # royalblue
-        "thermal_curtailed_series_mmbtu_per_hour"               => "RGBA(90, 95, 94, 1.0)",     # dark gray
-        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(255, 140, 0, 1.0)",    # darkorange
-        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(148, 0, 211, 1.0)",    # darkviolet
-        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(255, 215, 0, 1.0)",    # gold
-        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(60, 179, 113, 1.0)",   # mediumseagreen
-        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(220, 20, 60, 1.0)",    # crimson
+        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(0, 0, 255, 1.0)",      # pure blue
+        "thermal_curtailed_series_mmbtu_per_hour"               => "RGBA(80, 80, 80, 1.0)",     # dark gray
+        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(255, 140, 0, 1.0)",    # dark orange
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(160, 0, 200, 1.0)",    # strong purple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(255, 200, 0, 1.0)",    # strong gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(0, 180, 0, 1.0)",      # strong green
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(220, 0, 0, 1.0)",      # strong red
     )
     colors["SteamTurbine"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(70, 130, 180, 1.0)",   # steelblue
-        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 69, 0, 1.0)",     # orangered (amber family)
-        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(186, 85, 211, 1.0)",   # mediumorchid
-        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(255, 223, 70, 1.0)",   # bright gold
-        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(46, 139, 87, 1.0)",    # seagreen
-        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(255, 99, 71, 1.0)",    # tomato
+        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(30, 30, 220, 1.0)",    # bold blue
+        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 80, 0, 1.0)",     # deep orange-red
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(140, 0, 180, 1.0)",    # bold purple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(220, 180, 0, 1.0)",    # bold gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(0, 160, 0, 1.0)",      # bold green
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(200, 0, 0, 1.0)",      # bold red
     )
     colors["HotThermalStorage"] = Dict(
-        "storage_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(0, 128, 128, 1.0)",    # teal
-        "storage_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(0, 139, 139, 1.0)",    # darkcyan
-        "storage_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(32, 178, 170, 1.0)",   # lightseagreen
-        "storage_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(95, 158, 160, 1.0)",   # cadetblue
+        "storage_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(0, 180, 180, 1.0)",    # strong teal
+        "storage_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(0, 160, 160, 1.0)",    # teal
+        "storage_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(0, 200, 200, 1.0)",    # bright teal
+        "storage_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(0, 140, 140, 1.0)",    # dark teal
     )
     colors["HighTempThermalStorage"] = Dict(
-        "storage_to_load_series_mmbtu_per_hour"             => "RGBA(0, 100, 0, 1.0)",      # darkgreen
-        "storage_to_steamturbine_series_mmbtu_per_hour"     => "RGBA(72, 209, 204, 1.0)",   # mediumturquoise
+        "storage_to_load_series_mmbtu_per_hour"             => "RGBA(0, 120, 0, 1.0)",      # dark green
+        "storage_to_steamturbine_series_mmbtu_per_hour"     => "RGBA(0, 210, 210, 1.0)",    # bright cyan
     )
     colors["GHP"] = Dict(
-        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(102, 205, 170, 1.0)",  # mediumaquamarine
-        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(255, 200, 50, 1.0)",   # warm gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(0, 200, 100, 1.0)",   # green-teal
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(255, 190, 0, 1.0)",   # amber
     )
     colors["ElectricHeater"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(135, 206, 250, 1.0)",  # lightskyblue
-        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 127, 80, 1.0)",   # coral (amber family)
-        "thermal_to_steamturbine_series_mmbtu_per_hour"                 => "RGBA(255, 160, 80, 1.0)",   # light orange
-        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(147, 112, 219, 1.0)",  # mediumpurple
-        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(240, 230, 140, 1.0)",  # khaki
-        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(144, 238, 144, 1.0)",  # lightgreen
-        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(250, 128, 114, 1.0)",  # salmon
+        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(50, 100, 255, 1.0)",   # bright blue
+        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 60, 0, 1.0)",     # vivid orange-red
+        "thermal_to_steamturbine_series_mmbtu_per_hour"                 => "RGBA(255, 120, 0, 1.0)",    # vivid orange
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(120, 0, 200, 1.0)",    # vivid purple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(210, 170, 0, 1.0)",    # vivid gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(0, 200, 0, 1.0)",      # vivid green
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(210, 0, 0, 1.0)",      # vivid red
     )
     colors["CST"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(100, 149, 237, 1.0)",  # cornflowerblue
-        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 83, 13, 1.0)",    # deep amber
-        "thermal_to_steamturbine_series_mmbtu_per_hour"                 => "RGBA(255, 120, 0, 1.0)",    # vivid orange
-        "thermal_curtailed_series_mmbtu_per_hour"                       => "RGBA(125, 132, 144, 1.0)",  # slate gray
-        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(138, 43, 226, 1.0)",   # blueviolet
-        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(255, 210, 0, 1.0)",    # amber gold
-        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(34, 139, 34, 1.0)",    # forestgreen
-        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(205, 92, 92, 1.0)",    # indianred
+        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(0, 50, 255, 1.0)",     # deep blue
+        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(230, 60, 0, 1.0)",     # deep orange-red
+        "thermal_to_steamturbine_series_mmbtu_per_hour"                 => "RGBA(255, 100, 0, 1.0)",    # orange
+        "thermal_curtailed_series_mmbtu_per_hour"                       => "RGBA(100, 100, 100, 1.0)",  # medium gray
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(130, 0, 190, 1.0)",    # deep purple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(200, 160, 0, 1.0)",    # deep gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(0, 170, 0, 1.0)",      # deep green
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(190, 0, 0, 1.0)",      # deep red
     )
     colors["Boiler"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(176, 196, 222, 1.0)",  # lightsteelblue
-        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(205, 133, 63, 1.0)",   # peru (warm orange)
-        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(153, 50, 204, 1.0)",   # darkorchid
-        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(218, 165, 32, 1.0)",   # goldenrod
-        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(107, 142, 35, 1.0)",   # olivedrab
-        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(188, 143, 143, 1.0)",  # rosybrown
+        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(70, 130, 255, 1.0)",   # medium blue
+        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(255, 150, 0, 1.0)",    # medium orange
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(150, 0, 210, 1.0)",    # medium purple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(230, 190, 0, 1.0)",    # medium gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(0, 190, 0, 1.0)",      # medium green
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(215, 0, 0, 1.0)",      # medium red
     )
     colors["ExistingBoiler"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(119, 136, 153, 1.0)",  # lightslategray
-        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(210, 105, 30, 1.0)",   # chocolate
-        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(128, 0, 128, 1.0)",    # purple
-        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(184, 134, 11, 1.0)",   # darkgoldenrod
-        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(85, 107, 47, 1.0)",    # darkolivegreen
-        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(178, 34, 34, 1.0)",    # firebrick
+        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(0, 80, 200, 1.0)",     # darker blue
+        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(200, 100, 0, 1.0)",    # darker orange
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(100, 0, 160, 1.0)",    # darker purple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(180, 140, 0, 1.0)",    # darker gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(0, 140, 0, 1.0)",      # darker green
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(170, 0, 0, 1.0)",      # darker red
     )
     colors["ASHPSpaceHeater"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"  => "RGBA(173, 216, 230, 1.0)",  # lightblue
-        "thermal_to_load_series_mmbtu_per_hour"     => "RGBA(70, 130, 180, 1.0)",   # steelblue
+        "thermal_to_storage_series_mmbtu_per_hour"  => "RGBA(100, 160, 255, 1.0)",  # light blue
+        "thermal_to_load_series_mmbtu_per_hour"     => "RGBA(0, 80, 255, 1.0)",     # solid blue
     )
     colors["ASHPWaterHeater"] = Dict(
-        "thermal_to_storage_series_mmbtu_per_hour"  => "RGBA(176, 224, 230, 1.0)",  # powderblue
-        "thermal_to_load_series_mmbtu_per_hour"     => "RGBA(100, 149, 237, 1.0)",  # cornflowerblue
+        "thermal_to_storage_series_mmbtu_per_hour"  => "RGBA(100, 180, 255, 1.0)",  # lighter blue
+        "thermal_to_load_series_mmbtu_per_hour"     => "RGBA(0, 120, 255, 1.0)",    # solid blue (slightly lighter)
     )
 
     # Define the start and end time for the date and time array
