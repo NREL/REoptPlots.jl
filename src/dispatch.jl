@@ -99,6 +99,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 
     if display_stats
         ###Plot Stats
+        # TODO: Update this to use total load, rather than load_series_kw which is actually the BAU Load
         df_stat = rec_flatten_dict(d)
         load  = get(df_stat,"ElectricLoad.load_series_kw","-")
         avg_val = round(mean(load))
@@ -392,6 +393,248 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
     end
 
     plot(traces, layout)  # will not produce plot in a loop
+end
+
+
+function plot_heating_thermal_dispatch(d::Dict; title="Thermal Systems Dispatch", save_html=false, year=2017, 
+    other_timeseries::Array{<:Real,1} = Real[], other_timeseries_name::String = "", other_timeseries_units::String = "")
+
+    bau_heating_load = d["HeatingLoad"]["total_heating_thermal_load_series_mmbtu_per_hour"]
+    
+    traces = GenericTrace[]
+    layout = Layout(
+        hovermode="closest",
+        hoverlabel_align="left",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font_size=18,
+        xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
+        yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
+        title = title,
+        xaxis_title = "",
+        yaxis_title = "Heating Thermal Power (MMBtu/hr)",
+        xaxis_rangeslider_visible=true,
+        legend=attr(x=1.17, y=0.5, font=attr(size=14,color="black")))
+    
+    # Colors for dispatch plot
+    colors = Dict()
+
+    colors["CHP"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(65, 105, 225, 1.0)",   # royalblue
+        "thermal_curtailed_series_mmbtu_per_hour"               => "RGBA(90, 95, 94, 1.0)",     # dark gray
+        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(255, 140, 0, 1.0)",    # darkorange
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(148, 0, 211, 1.0)",    # darkviolet
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(255, 215, 0, 1.0)",    # gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(60, 179, 113, 1.0)",   # mediumseagreen
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(220, 20, 60, 1.0)",    # crimson
+    )
+    colors["SteamTurbine"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(70, 130, 180, 1.0)",   # steelblue
+        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 69, 0, 1.0)",     # orangered (amber family)
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(186, 85, 211, 1.0)",   # mediumorchid
+        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(255, 223, 70, 1.0)",   # bright gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(46, 139, 87, 1.0)",    # seagreen
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(255, 99, 71, 1.0)",    # tomato
+    )
+    colors["HotThermalStorage"] = Dict(
+        "storage_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(0, 128, 128, 1.0)",    # teal
+        "storage_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(0, 139, 139, 1.0)",    # darkcyan
+        "storage_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(32, 178, 170, 1.0)",   # lightseagreen
+        "storage_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(95, 158, 160, 1.0)",   # cadetblue
+    )
+    colors["HighTempThermalStorage"] = Dict(
+        "storage_to_load_series_mmbtu_per_hour"             => "RGBA(0, 100, 0, 1.0)",      # darkgreen
+        "storage_to_steamturbine_series_mmbtu_per_hour"     => "RGBA(72, 209, 204, 1.0)",   # mediumturquoise
+    )
+    colors["GHP"] = Dict(
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(102, 205, 170, 1.0)",  # mediumaquamarine
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(255, 200, 50, 1.0)",   # warm gold
+    )
+    colors["ElectricHeater"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(135, 206, 250, 1.0)",  # lightskyblue
+        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 127, 80, 1.0)",   # coral (amber family)
+        "thermal_to_steamturbine_series_mmbtu_per_hour"                 => "RGBA(255, 160, 80, 1.0)",   # light orange
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(147, 112, 219, 1.0)",  # mediumpurple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(240, 230, 140, 1.0)",  # khaki
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(144, 238, 144, 1.0)",  # lightgreen
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(250, 128, 114, 1.0)",  # salmon
+    )
+    colors["CST"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"                      => "RGBA(100, 149, 237, 1.0)",  # cornflowerblue
+        "thermal_to_high_temp_thermal_storage_series_mmbtu_per_hour"    => "RGBA(255, 83, 13, 1.0)",    # deep amber
+        "thermal_to_steamturbine_series_mmbtu_per_hour"                 => "RGBA(255, 120, 0, 1.0)",    # vivid orange
+        "thermal_curtailed_series_mmbtu_per_hour"                       => "RGBA(125, 132, 144, 1.0)",  # slate gray
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"           => "RGBA(138, 43, 226, 1.0)",   # blueviolet
+        "thermal_to_dhw_load_series_mmbtu_per_hour"                     => "RGBA(255, 210, 0, 1.0)",    # amber gold
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"           => "RGBA(34, 139, 34, 1.0)",    # forestgreen
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"            => "RGBA(205, 92, 92, 1.0)",    # indianred
+    )
+    colors["Boiler"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(176, 196, 222, 1.0)",  # lightsteelblue
+        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(205, 133, 63, 1.0)",   # peru (warm orange)
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(153, 50, 204, 1.0)",   # darkorchid
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(218, 165, 32, 1.0)",   # goldenrod
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(107, 142, 35, 1.0)",   # olivedrab
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(188, 143, 143, 1.0)",  # rosybrown
+    )
+    colors["ExistingBoiler"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"              => "RGBA(119, 136, 153, 1.0)",  # lightslategray
+        "thermal_to_steamturbine_series_mmbtu_per_hour"         => "RGBA(210, 105, 30, 1.0)",   # chocolate
+        "thermal_to_absorption_chiller_series_mmbtu_per_hour"   => "RGBA(128, 0, 128, 1.0)",    # purple
+        "thermal_to_dhw_load_series_mmbtu_per_hour"             => "RGBA(184, 134, 11, 1.0)",   # darkgoldenrod
+        "thermal_to_space_heating_load_series_mmbtu_per_hour"   => "RGBA(85, 107, 47, 1.0)",    # darkolivegreen
+        "thermal_to_process_heat_load_series_mmbtu_per_hour"    => "RGBA(178, 34, 34, 1.0)",    # firebrick
+    )
+    colors["ASHPSpaceHeater"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"  => "RGBA(173, 216, 230, 1.0)",  # lightblue
+        "thermal_to_load_series_mmbtu_per_hour"     => "RGBA(70, 130, 180, 1.0)",   # steelblue
+    )
+    colors["ASHPWaterHeater"] = Dict(
+        "thermal_to_storage_series_mmbtu_per_hour"  => "RGBA(176, 224, 230, 1.0)",  # powderblue
+        "thermal_to_load_series_mmbtu_per_hour"     => "RGBA(100, 149, 237, 1.0)",  # cornflowerblue
+    )
+
+    # Define the start and end time for the date and time array
+    start_time = DateTime(year, 1, 1, 0, 0, 0)
+    end_time = DateTime(year+1, 1, 1, 0, 0, 0)
+
+    # Create the date and time array with the specified time interval
+    dr = start_time:check_time_interval(bau_heating_load):end_time
+    dr_v = collect(dr) 
+    pop!(dr_v) # pop removes last ts
+
+    ### REopt Data Plotting Begins
+    ### BAU Electric Load Line Plot
+    # Dotted line for BAU heating load
+    push!(traces, scatter(;
+        name = "BAU Heating Load",
+        x = dr_v,
+        y = bau_heating_load,
+        mode = "lines",
+        fill = nothing,
+        line=attr(width=1, color="black", dash="dot")
+    ))
+    # Sum all series that contain "thermal_to_load_series_mmbtu_per_hour" or "storage_to_load_series_mmbtu_per_hour" to get total electric load line plot
+    total_load = sum(
+        get(d[tech], "thermal_to_load_series_mmbtu_per_hour", zeros(length(dr_v))) +
+        get(d[tech], "storage_to_load_series_mmbtu_per_hour", zeros(length(dr_v)))
+        for tech in keys(colors) if haskey(d, tech) && 
+            (haskey(d[tech], "thermal_to_load_series_mmbtu_per_hour") || haskey(d[tech], "storage_to_load_series_mmbtu_per_hour")) && 
+            (!isempty(get(d[tech], "thermal_to_load_series_mmbtu_per_hour", [])) || !isempty(get(d[tech], "storage_to_load_series_mmbtu_per_hour", []))) && 
+            (sum(get(d[tech], "thermal_to_load_series_mmbtu_per_hour", [0.0])) != 0.0 || sum(get(d[tech], "storage_to_load_series_mmbtu_per_hour", [0.0])) != 0.0)
+    )
+    push!(traces, scatter(;
+        name = "Total Heating Load",
+        x = dr_v,
+        y = total_load,
+        mode = "lines",
+        fill = nothing,
+        line=attr(width=1, color="black")
+    ))
+
+    if length(other_timeseries) > 0
+        push!(traces, scatter(
+                name = other_timeseries_name,
+                x = dr_v,
+                y = other_timeseries,
+                yaxis="y2",
+                line = attr(
+                    dash= "dashdot",
+                    width = 1
+                ),
+                marker = attr(
+                    color="rgb(100,100,100)"
+                ),
+            )
+        )
+        layout = Layout(
+            hovermode="closest",
+            hoverlabel_align="left",
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font_size=18,
+            xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                linewidth=1.5, zeroline=false),
+            yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                linewidth=1.5, zeroline=false),
+            xaxis_title = "",
+            yaxis_title = "Power (kW)",
+            xaxis_rangeslider_visible=true,
+            legend=attr(x=1.17, y=0.5, 
+                        font=attr(
+                        size=14,
+                        color="black")
+                        ),
+            yaxis2 = attr(
+                title = other_timeseries_units,
+                overlaying = "y",
+                side = "right"
+            ))
+    end
+
+    # Plot every existing technology
+    cumulative_data = zeros(length(dr_v))
+    for tech in keys(colors)
+        for key in keys(colors[tech])
+            if haskey(d,tech)
+                sub_dict = d[tech]
+                if haskey(sub_dict, key) && !isempty(sub_dict[key]) && sum(sub_dict[key]) != 0.0
+                            
+                    #invisble line for plotting
+                    push!(traces, scatter(
+                        name = "invisible",			
+                        x = dr_v,
+                        y = cumulative_data,
+                        mode = "lines",
+                        fill = nothing,
+                        line = attr(width = 0),
+                        showlegend = false,
+                        hoverinfo = "skip",
+                    )) 
+
+                    new_data = sub_dict[key] 
+                    cumulative_data = cumulative_data .+ new_data
+
+                    if contains(key, "to_load")
+                        txt = "To Load"
+                    elseif contains(key, "to_steamturbine")
+                        txt = "To Steam Turbine"
+                    elseif contains(key, "to_absorption_chiller")
+                        txt = "To Absorption Chiller"
+                    elseif contains(key, "to_dhw_load")
+                        txt = "To DHW Load"
+                    elseif contains(key, "to_space_heating_load")
+                        txt = "To Space Heating Load"
+                    elseif contains(key, "to_process_heat_load")
+                        txt = "To Process Heat Load"
+                    elseif contains(key, "to_storage")
+                        txt = "Charging Storage"
+                    elseif contains(key, "to_high_temp_thermal_storage")
+                        txt = "Charging High Temp Storage"
+                    elseif contains(key, "curtailed")
+                        txt = "Curtailed"
+                    end
+                    
+                    push!(traces, scatter(;
+                        name = tech* " "*txt,
+                        x = dr_v,
+                        y = cumulative_data,
+                        mode = "lines",
+                        fill = "tonexty",
+                        line = attr(width=0, color = colors[tech][key])
+                    ))   
+                end
+            end
+        end
+    end
+
+    p = plot(traces, layout)
+
+    if save_html
+        savefig(p, replace(title, " " => "_") * ".html")
+    end
+
+    plot(traces, layout) 
 end
 
 function rec_flatten_dict(d, prefix_delim = ".")
