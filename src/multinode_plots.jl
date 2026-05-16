@@ -1259,5 +1259,160 @@ function MapOutageSimulatorResultsPlots(Multinode_Inputs, outage_survival_result
 end
 
 
+function create_distribution_system_map(eng_model_or_path, coordinates_csv_filepath; output_filepath="")
+	# This function was generated using AI
+    #=
+	Creates an interactive overhead map of the distribution system showing buses as points
+	and distribution lines/transformers as connecting edges. Uses PlotlyJS so the user
+	can zoom/pan freely and hover over any bus to see its name.
 
+	Inputs:
+	  eng_model_or_path        : either a file path String to a .dss file, or an already-parsed
+	                             PowerModelsDistribution engineering model Dict
+	  coordinates_csv_filepath : path to a CSV with columns [Bus, Latitude, Longitude]
+	  output_filepath          : (optional) if provided, saves the interactive plot as an HTML
+	                             file at this path (e.g. "map.html")
+
+	Returns a PlotlyJS plot object. Call display(p) to show it interactively,
+	or PlotlyJS.savefig(p, "map.html") to save it.
+	=#
+
+	# Accept either a file path or an already-parsed engineering model
+	if isa(eng_model_or_path, String)
+		eng_model = PowerModelsDistribution.parse_file(eng_model_or_path)
+	else
+		eng_model = eng_model_or_path
+	end
+
+	# Read bus coordinates from CSV with columns [Bus, Latitude, Longitude]
+	coords_df = CSV.read(coordinates_csv_filepath, DataFrames.DataFrame)
+	coords = Dict(
+		lowercase(string(row.Bus)) => (Float64(row.Longitude), Float64(row.Latitude))
+		for row in eachrow(coords_df)
+	)  # stored as (lon, lat) — x = longitude, y = latitude
+
+	traces = PlotlyJS.GenericTrace[]
+
+	# --- Distribution lines: one trace using NaN separators for efficiency ---
+	x_lines = Float64[]
+	y_lines = Float64[]
+	lines_plotted = 0
+	for (_, line) in get(eng_model, "line", Dict())
+		f = lowercase(string(line["f_bus"]))
+		t = lowercase(string(line["t_bus"]))
+		if haskey(coords, f) && haskey(coords, t)
+			lon1, lat1 = coords[f]
+			lon2, lat2 = coords[t]
+			push!(x_lines, lon1, lon2, NaN)  # NaN breaks the line between segments
+			push!(y_lines, lat1, lat2, NaN)
+			lines_plotted += 1
+		end
+	end
+	if !isempty(x_lines)
+		push!(traces, PlotlyJS.scatter(
+			x = x_lines, y = y_lines,
+			mode = "lines",
+			line = PlotlyJS.attr(color = "steelblue", width = 1.5),
+			name = "Lines",
+			hoverinfo = "none"
+		))
+	end
+
+	# --- Transformer connections: one trace using NaN separators ---
+	x_xfmrs = Float64[]
+	y_xfmrs = Float64[]
+	xfmrs_plotted = 0
+	for (_, xfmr) in get(eng_model, "transformer", Dict())
+		buses = lowercase.(string.(xfmr["bus"]))
+		for i in 1:(length(buses) - 1)
+			f, t = buses[i], buses[i + 1]
+			if haskey(coords, f) && haskey(coords, t)
+				lon1, lat1 = coords[f]
+				lon2, lat2 = coords[t]
+				push!(x_xfmrs, lon1, lon2, NaN)
+				push!(y_xfmrs, lat1, lat2, NaN)
+				xfmrs_plotted += 1
+			end
+		end
+	end
+	if !isempty(x_xfmrs)
+		push!(traces, PlotlyJS.scatter(
+			x = x_xfmrs, y = y_xfmrs,
+			mode = "lines",
+			line = PlotlyJS.attr(color = "darkorange", width = 1.0),
+			name = "Transformers",
+			hoverinfo = "none"
+		))
+	end
+
+	# --- Buses: scatter with hover showing bus name ---
+	bus_lons      = Float64[]
+	bus_lats      = Float64[]
+	bus_names_txt = String[]
+	for bus_name in keys(get(eng_model, "bus", Dict()))
+		lc = lowercase(string(bus_name))
+		if haskey(coords, lc)
+			lon, lat = coords[lc]
+			push!(bus_lons, lon)
+			push!(bus_lats, lat)
+			push!(bus_names_txt, string(bus_name))
+		end
+	end
+	if !isempty(bus_lons)
+		push!(traces, PlotlyJS.scatter(
+			x = bus_lons, y = bus_lats,
+			mode = "markers",
+			marker = PlotlyJS.attr(size = 5, color = "red", opacity = 0.85),
+			name = "Buses",
+			text = bus_names_txt,
+			hoverinfo = "text"
+		))
+	end
+
+	# --- Substation: distinct marker with hover ---
+	for (_, vsrc) in get(eng_model, "voltage_source", Dict())
+		sub_bus = lowercase(string(vsrc["bus"]))
+		if haskey(coords, sub_bus)
+			lon, lat = coords[sub_bus]
+			push!(traces, PlotlyJS.scatter(
+				x = [lon], y = [lat],
+				mode = "markers+text",
+				marker = PlotlyJS.attr(size = 14, color = "green", symbol = "star", opacity = 1.0),
+				name = "Substation",
+				text = ["  $(vsrc["bus"])"],
+				textposition = "middle right",
+				hovertext = ["Substation: $(vsrc["bus"])"],
+				hoverinfo = "text"
+			))
+		end
+	end
+
+	layout = PlotlyJS.Layout(
+		title = "Distribution System Map",
+		xaxis = PlotlyJS.attr(
+			title = "Longitude",
+			showgrid = true,
+			zeroline = false,
+			scaleanchor = "y",    # keep aspect ratio equal so network is not distorted
+			scaleratio = 1
+		),
+		yaxis = PlotlyJS.attr(title = "Latitude", showgrid = true, zeroline = false),
+		hovermode = "closest",
+		showlegend = true
+	)
+
+	p = PlotlyJS.plot(traces, layout)
+
+	if output_filepath != ""
+		PlotlyJS.savefig(p, output_filepath)
+		println("Interactive map saved to: $output_filepath")
+	end
+
+	n_buses_mapped = length(bus_lons)
+	n_buses_total  = length(get(eng_model, "bus", Dict()))
+	println("Mapped $n_buses_mapped of $n_buses_total buses ($(n_buses_total - n_buses_mapped) had no coordinates in CSV)")
+	println("Drew $lines_plotted lines and $xfmrs_plotted transformer connections")
+
+	return p
+end
 
