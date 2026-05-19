@@ -1218,7 +1218,7 @@ end
 
 function MapOutageSimulatorResultsPlots(Multinode_Inputs, outage_survival_results, outage_start_timesteps, TimeStamp, OutageLength_TimeSteps_Input, folder)
     # This function creates plots to summarize the outage simulation results
-
+    
     indices_outage_survived = findall(x -> x==1, outage_survival_results) # Find indices of survived outages
     indices_outage_not_survived = findall(x -> x==0, outage_survival_results) # Find indices of non-survived outages
 
@@ -1259,7 +1259,7 @@ function MapOutageSimulatorResultsPlots(Multinode_Inputs, outage_survival_result
 end
 
 
-function create_distribution_system_map(eng_model_or_path, coordinates_csv_filepath; output_filepath="")
+function create_distribution_system_map(eng_model_or_path, data_math, coordinates_csv_filepath; output_filepath="")
 	# This function was generated using AI
     #=
 	Creates an interactive overhead map of the distribution system showing buses as points
@@ -1269,6 +1269,8 @@ function create_distribution_system_map(eng_model_or_path, coordinates_csv_filep
 	Inputs:
 	  eng_model_or_path        : either a file path String to a .dss file, or an already-parsed
 	                             PowerModelsDistribution engineering model Dict
+	  data_math                : the PowerModelsDistribution math model Dict (obtained via
+	                             PowerModelsDistribution.transform_data_model(data_eng))
 	  coordinates_csv_filepath : path to a CSV with columns [Bus, Latitude, Longitude]
 	  output_filepath          : (optional) if provided, saves the interactive plot as an HTML
 	                             file at this path (e.g. "map.html")
@@ -1291,29 +1293,65 @@ function create_distribution_system_map(eng_model_or_path, coordinates_csv_filep
 		for row in eachrow(coords_df)
 	)  # stored as (lon, lat) — x = longitude, y = latitude
 
+	# Build per-bus voltage base lookup from the supplied math model
+	bus_vbase = Dict{String, Float64}()
+	for (_, bus) in get(data_math, "bus", Dict())
+		bus_name = lowercase(string(get(bus, "name", "")))
+		vbase = get(bus, "vbase", nothing)
+		if !isempty(bus_name) && vbase !== nothing
+			bus_vbase[bus_name] = Float64(vbase)
+		end
+	end
+	@info "Voltage bases retrieved from math model for $(length(bus_vbase)) buses"
+
 	traces = PlotlyJS.GenericTrace[]
 
-	# --- Distribution lines: one trace using NaN separators for efficiency ---
-	x_lines = Float64[]
-	y_lines = Float64[]
+	# --- Distribution lines: grouped by voltage level (vbase from math model) for color-coding ---
+	# Color palette assigned from highest to lowest voltage level
+	line_color_palette = ["#c0392b",  # dark red   — highest voltage
+	                      "#2471a3",  # blue
+	                      "#1e8449",  # green
+	                      "#d68910",  # amber
+	                      "#7d3c98",  # purple
+	                      "#117a65",  # teal
+	                      "#e74c3c",  # red
+	                      "#1a5276",  # dark blue
+	                      "#196f3d",  # dark green
+	                      "#7e5109"]  # brown
+
+	voltage_line_coords = Dict{String, Tuple{Vector{Float64}, Vector{Float64}}}()
 	lines_plotted = 0
 	for (_, line) in get(eng_model, "line", Dict())
 		f = lowercase(string(line["f_bus"]))
 		t = lowercase(string(line["t_bus"]))
 		if haskey(coords, f) && haskey(coords, t)
+			# Look up voltage base from math model (fall back to t_bus, then "Unknown kV")
+			vbase = get(bus_vbase, f, get(bus_vbase, t, nothing))
+			vl_key = vbase === nothing ? "Unknown kV" : string(round(vbase, digits=3)) * " kV"
+
+			if !haskey(voltage_line_coords, vl_key)
+				voltage_line_coords[vl_key] = (Float64[], Float64[])
+			end
 			lon1, lat1 = coords[f]
 			lon2, lat2 = coords[t]
-			push!(x_lines, lon1, lon2, NaN)  # NaN breaks the line between segments
-			push!(y_lines, lat1, lat2, NaN)
+			push!(voltage_line_coords[vl_key][1], lon1, lon2, NaN)
+			push!(voltage_line_coords[vl_key][2], lat1, lat2, NaN)
 			lines_plotted += 1
 		end
 	end
-	if !isempty(x_lines)
+	# Sort voltage levels descending so highest voltage gets the first (darkest red) color
+	known_vl_keys = [k for k in keys(voltage_line_coords) if k != "Unknown kV"]
+	sort!(known_vl_keys, by = k -> parse(Float64, split(k, " ")[1]), rev = true)
+	voltage_levels_sorted = haskey(voltage_line_coords, "Unknown kV") ?
+	                        vcat(known_vl_keys, ["Unknown kV"]) : known_vl_keys
+	for (idx, vl_key) in enumerate(voltage_levels_sorted)
+		color = idx <= length(line_color_palette) ? line_color_palette[idx] : "#888888"
+		x_data, y_data = voltage_line_coords[vl_key]
 		push!(traces, PlotlyJS.scatter(
-			x = x_lines, y = y_lines,
+			x = x_data, y = y_data,
 			mode = "lines",
-			line = PlotlyJS.attr(color = "steelblue", width = 1.5),
-			name = "Lines",
+			line = PlotlyJS.attr(color = color, width = 1.5),
+			name = "Lines $(vl_key)",
 			hoverinfo = "none"
 		))
 	end
@@ -1346,17 +1384,23 @@ function create_distribution_system_map(eng_model_or_path, coordinates_csv_filep
 	end
 
 	# --- Buses: scatter with hover showing bus name ---
-	bus_lons      = Float64[]
-	bus_lats      = Float64[]
-	bus_names_txt = String[]
+	# Group buses by coordinate so that multiple buses at the same point all appear in the hover label
+	bus_coord_groups = Dict{Tuple{Float64,Float64}, Vector{String}}()
 	for bus_name in keys(get(eng_model, "bus", Dict()))
 		lc = lowercase(string(bus_name))
 		if haskey(coords, lc)
 			lon, lat = coords[lc]
-			push!(bus_lons, lon)
-			push!(bus_lats, lat)
-			push!(bus_names_txt, string(bus_name))
+			key = (lon, lat)
+			push!(get!(bus_coord_groups, key, String[]), string(bus_name))
 		end
+	end
+	bus_lons      = Float64[]
+	bus_lats      = Float64[]
+	bus_names_txt = String[]
+	for ((lon, lat), names) in bus_coord_groups
+		push!(bus_lons, lon)
+		push!(bus_lats, lat)
+		push!(bus_names_txt, join(sort(names), "\nand\n"))
 	end
 	if !isempty(bus_lons)
 		push!(traces, PlotlyJS.scatter(
@@ -1408,10 +1452,11 @@ function create_distribution_system_map(eng_model_or_path, coordinates_csv_filep
 		println("Interactive map saved to: $output_filepath")
 	end
 
-	n_buses_mapped = length(bus_lons)
+	n_buses_mapped = sum(length(v) for v in values(bus_coord_groups); init=0)
 	n_buses_total  = length(get(eng_model, "bus", Dict()))
 	println("Mapped $n_buses_mapped of $n_buses_total buses ($(n_buses_total - n_buses_mapped) had no coordinates in CSV)")
 	println("Drew $lines_plotted lines and $xfmrs_plotted transformer connections")
+	println("Voltage levels found: $(join(voltage_levels_sorted, ", "))")
 
 	return p
 end
