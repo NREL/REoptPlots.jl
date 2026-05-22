@@ -1306,8 +1306,7 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 
 	traces = PlotlyJS.GenericTrace[]
 
-	# --- Distribution lines: grouped by voltage level (vbase from math model) for color-coding ---
-	# Color palette assigned from highest to lowest voltage level
+	# --- Color palette for voltage levels ---
 	line_color_palette = ["#c0392b",  # dark red   — highest voltage
 	                      "#2471a3",  # blue
 	                      "#1e8449",  # green
@@ -1319,31 +1318,44 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 	                      "#196f3d",  # dark green
 	                      "#7e5109"]  # brown
 
+	# --- Build line coordinate groups: all-phases (voltage-level) and per-phase ---
 	voltage_line_coords = Dict{String, Tuple{Vector{Float64}, Vector{Float64}}}()
+	phase_line_coords = Dict{Int, Tuple{Vector{Float64}, Vector{Float64}}}(
+		1 => (Float64[], Float64[]), 2 => (Float64[], Float64[]), 3 => (Float64[], Float64[])
+	)
+
 	lines_plotted = 0
 	for (_, line) in get(eng_model, "line", Dict())
 		f = lowercase(string(line["f_bus"]))
 		t = lowercase(string(line["t_bus"]))
-		if haskey(coords, f) && haskey(coords, t)
-			# Look up voltage base from math model (fall back to t_bus, then "Unknown kV")
-			vbase = get(bus_vbase, f, get(bus_vbase, t, nothing))
-			vl_key = vbase === nothing ? "Unknown kV" : string(round(vbase, digits=3)) * " kV"
+		haskey(coords, f) && haskey(coords, t) || continue
 
-			if !haskey(voltage_line_coords, vl_key)
-				voltage_line_coords[vl_key] = (Float64[], Float64[])
-			end
-			lon1, lat1 = coords[f]
-			lon2, lat2 = coords[t]
-			push!(voltage_line_coords[vl_key][1], lon1, lon2, NaN)
-			push!(voltage_line_coords[vl_key][2], lat1, lat2, NaN)
-			lines_plotted += 1
+		vbase = get(bus_vbase, f, get(bus_vbase, t, nothing))
+		vl_key = vbase === nothing ? "Unknown kV" : string(round(vbase, digits=3)) * " kV"
+
+		if !haskey(voltage_line_coords, vl_key)
+			voltage_line_coords[vl_key] = (Float64[], Float64[])
+		end
+		lon1, lat1 = coords[f]
+		lon2, lat2 = coords[t]
+		push!(voltage_line_coords[vl_key][1], lon1, lon2, NaN)
+		push!(voltage_line_coords[vl_key][2], lat1, lat2, NaN)
+		lines_plotted += 1
+
+		# Accumulate per-phase coordinates from f_connections
+		for ph in filter(p -> p in (1, 2, 3), get(line, "f_connections", Int[]))
+			push!(phase_line_coords[ph][1], lon1, lon2, NaN)
+			push!(phase_line_coords[ph][2], lat1, lat2, NaN)
 		end
 	end
+
 	# Sort voltage levels descending so highest voltage gets the first (darkest red) color
 	known_vl_keys = [k for k in keys(voltage_line_coords) if k != "Unknown kV"]
 	sort!(known_vl_keys, by = k -> parse(Float64, split(k, " ")[1]), rev = true)
 	voltage_levels_sorted = haskey(voltage_line_coords, "Unknown kV") ?
 	                        vcat(known_vl_keys, ["Unknown kV"]) : known_vl_keys
+
+	# Add "All Phases" traces — voltage-level colored, visible by default
 	for (idx, vl_key) in enumerate(voltage_levels_sorted)
 		color = idx <= length(line_color_palette) ? line_color_palette[idx] : "#888888"
 		x_data, y_data = voltage_line_coords[vl_key]
@@ -1352,9 +1364,28 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 			mode = "lines",
 			line = PlotlyJS.attr(color = color, width = 1.5),
 			name = "Lines $(vl_key)",
+			visible = true,
 			hoverinfo = "none"
 		))
 	end
+	n_allphase_traces = length(traces)  # number of All-Phases voltage-level traces
+
+	# Add per-phase traces — one per phase, hidden by default.
+	# Each line appears in the trace for every phase it carries (from f_connections).
+	# Users can toggle individual phase traces via the legend for multi-phase overlay.
+	phase_line_colors = Dict(1 => "#1f77b4", 2 => "#d62728", 3 => "#2ca02c")  # blue, red, green
+	for ph in 1:3
+		x_data, y_data = phase_line_coords[ph]
+		push!(traces, PlotlyJS.scatter(
+			x = x_data, y = y_data,
+			mode = "lines",
+			line = PlotlyJS.attr(color = phase_line_colors[ph], width = 1.5),
+			name = "Phase $(ph) Lines",
+			visible = false,
+			hoverinfo = "none"
+		))
+	end
+	n_line_traces = length(traces)  # all-phases traces + 3 per-phase traces
 
 	# --- Transformer connections: one trace using NaN separators ---
 	x_xfmrs = Float64[]
@@ -1431,6 +1462,26 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 		end
 	end
 
+	# --- Phase-filter buttons ---
+	# Build per-button visibility arrays (one Bool per trace).
+	# Traces i <= n_allphase_traces : All-Phases voltage-level traces
+	# Traces n_allphase_traces+1..3 : Phase 1, Phase 2, Phase 3 traces
+	# Traces beyond n_line_traces   : transformers, buses, substation — always visible
+	n_total_traces = length(traces)
+	all_indices    = collect(0:(n_total_traces - 1))  # 0-based for Plotly.js
+
+	vis_all    = [i <= n_allphase_traces ? true  :
+	              i <= n_line_traces     ? false : true for i in 1:n_total_traces]
+	vis_phase1 = [i <= n_allphase_traces     ? false :
+	              i == n_allphase_traces + 1 ? true  :
+	              i <= n_line_traces         ? false : true for i in 1:n_total_traces]
+	vis_phase2 = [i <= n_allphase_traces     ? false :
+	              i == n_allphase_traces + 2 ? true  :
+	              i <= n_line_traces         ? false : true for i in 1:n_total_traces]
+	vis_phase3 = [i <= n_allphase_traces     ? false :
+	              i == n_allphase_traces + 3 ? true  :
+	              i <= n_line_traces         ? false : true for i in 1:n_total_traces]
+
 	layout = PlotlyJS.Layout(
 		title = "Distribution System Map",
 		xaxis = PlotlyJS.attr(
@@ -1442,7 +1493,37 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 		),
 		yaxis = PlotlyJS.attr(title = "Latitude", showgrid = true, zeroline = false),
 		hovermode = "closest",
-		showlegend = true
+		showlegend = true,
+		margin = PlotlyJS.attr(l = 140),   # extra left margin for the button panel
+		updatemenus = [PlotlyJS.attr(
+			type       = "buttons",
+			direction  = "down",
+			showactive = true,
+			x = 1.02, xanchor = "left",
+			y = 0.5,   yanchor = "top",
+			buttons = [
+				PlotlyJS.attr(
+					label  = "All Phases",
+					method = "restyle",
+					args   = [Dict("visible" => vis_all), all_indices]
+				),
+				PlotlyJS.attr(
+					label  = "Phase 1",
+					method = "restyle",
+					args   = [Dict("visible" => vis_phase1), all_indices]
+				),
+				PlotlyJS.attr(
+					label  = "Phase 2",
+					method = "restyle",
+					args   = [Dict("visible" => vis_phase2), all_indices]
+				),
+				PlotlyJS.attr(
+					label  = "Phase 3",
+					method = "restyle",
+					args   = [Dict("visible" => vis_phase3), all_indices]
+				),
+			]
+		)]
 	)
 
 	p = PlotlyJS.plot(traces, layout)
