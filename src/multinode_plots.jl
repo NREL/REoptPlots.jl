@@ -1318,10 +1318,12 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 	                      "#196f3d",  # dark green
 	                      "#7e5109"]  # brown
 
-	# --- Build line coordinate groups: all-phases (voltage-level) and per-phase ---
+	# --- Build line coordinate groups: all-phases (voltage-level) and per-phase (phase + voltage-level) ---
 	voltage_line_coords = Dict{String, Tuple{Vector{Float64}, Vector{Float64}}}()
-	phase_line_coords = Dict{Int, Tuple{Vector{Float64}, Vector{Float64}}}(
-		1 => (Float64[], Float64[]), 2 => (Float64[], Float64[]), 3 => (Float64[], Float64[])
+	phase_voltage_line_coords = Dict{Int, Dict{String, Tuple{Vector{Float64}, Vector{Float64}}}}(
+		1 => Dict{String, Tuple{Vector{Float64}, Vector{Float64}}}(),
+		2 => Dict{String, Tuple{Vector{Float64}, Vector{Float64}}}(),
+		3 => Dict{String, Tuple{Vector{Float64}, Vector{Float64}}}()
 	)
 
 	lines_plotted = 0
@@ -1342,10 +1344,13 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 		push!(voltage_line_coords[vl_key][2], lat1, lat2, NaN)
 		lines_plotted += 1
 
-		# Accumulate per-phase coordinates from f_connections
+		# Accumulate per-phase, per-voltage-level coordinates from f_connections
 		for ph in filter(p -> p in (1, 2, 3), get(line, "f_connections", Int[]))
-			push!(phase_line_coords[ph][1], lon1, lon2, NaN)
-			push!(phase_line_coords[ph][2], lat1, lat2, NaN)
+			if !haskey(phase_voltage_line_coords[ph], vl_key)
+				phase_voltage_line_coords[ph][vl_key] = (Float64[], Float64[])
+			end
+			push!(phase_voltage_line_coords[ph][vl_key][1], lon1, lon2, NaN)
+			push!(phase_voltage_line_coords[ph][vl_key][2], lat1, lat2, NaN)
 		end
 	end
 
@@ -1370,22 +1375,29 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 	end
 	n_allphase_traces = length(traces)  # number of All-Phases voltage-level traces
 
-	# Add per-phase traces — one per phase, hidden by default.
-	# Each line appears in the trace for every phase it carries (from f_connections).
-	# Users can toggle individual phase traces via the legend for multi-phase overlay.
-	phase_line_colors = Dict(1 => "#1f77b4", 2 => "#d62728", 3 => "#2ca02c")  # blue, red, green
+	# Add per-phase traces — one per (phase, voltage level), hidden by default.
+	# Each line appears in the trace for every phase it carries (from f_connections),
+	# and lines are color-coded by voltage level using the same palette as "All Phases".
+	phase_trace_indices = Dict(1 => Int[], 2 => Int[], 3 => Int[])
 	for ph in 1:3
-		x_data, y_data = phase_line_coords[ph]
-		push!(traces, PlotlyJS.scatter(
-			x = x_data, y = y_data,
-			mode = "lines",
-			line = PlotlyJS.attr(color = phase_line_colors[ph], width = 1.5),
-			name = "Phase $(ph) Lines",
-			visible = false,
-			hoverinfo = "none"
-		))
+		for (idx, vl_key) in enumerate(voltage_levels_sorted)
+			haskey(phase_voltage_line_coords[ph], vl_key) || continue
+			x_data, y_data = phase_voltage_line_coords[ph][vl_key]
+			isempty(x_data) && continue
+			color = idx <= length(line_color_palette) ? line_color_palette[idx] : "#888888"
+			push!(traces, PlotlyJS.scatter(
+				x = x_data, y = y_data,
+				mode = "lines",
+				line = PlotlyJS.attr(color = color, width = 1.5),
+				name = "Phase $(ph) Lines $(vl_key)",
+				legendgroup = "phase$(ph)",
+				visible = false,
+				hoverinfo = "none"
+			))
+			push!(phase_trace_indices[ph], length(traces))
+		end
 	end
-	n_line_traces = length(traces)  # all-phases traces + 3 per-phase traces
+	n_line_traces = length(traces)  # all-phases traces + per-phase voltage-level traces
 
 	# --- Transformer connections: one trace using NaN separators ---
 	x_xfmrs = Float64[]
@@ -1465,22 +1477,22 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 	# --- Phase-filter buttons ---
 	# Build per-button visibility arrays (one Bool per trace).
 	# Traces i <= n_allphase_traces : All-Phases voltage-level traces
-	# Traces n_allphase_traces+1..3 : Phase 1, Phase 2, Phase 3 traces
+	# Traces in phase_trace_indices[p] : Phase p voltage-level traces
 	# Traces beyond n_line_traces   : transformers, buses, substation — always visible
 	n_total_traces = length(traces)
 	all_indices    = collect(0:(n_total_traces - 1))  # 0-based for Plotly.js
 
 	vis_all    = [i <= n_allphase_traces ? true  :
 	              i <= n_line_traces     ? false : true for i in 1:n_total_traces]
-	vis_phase1 = [i <= n_allphase_traces     ? false :
-	              i == n_allphase_traces + 1 ? true  :
-	              i <= n_line_traces         ? false : true for i in 1:n_total_traces]
-	vis_phase2 = [i <= n_allphase_traces     ? false :
-	              i == n_allphase_traces + 2 ? true  :
-	              i <= n_line_traces         ? false : true for i in 1:n_total_traces]
-	vis_phase3 = [i <= n_allphase_traces     ? false :
-	              i == n_allphase_traces + 3 ? true  :
-	              i <= n_line_traces         ? false : true for i in 1:n_total_traces]
+	vis_phase1 = [i <= n_allphase_traces ? false :
+	              i <= n_line_traces     ? (i in phase_trace_indices[1]) :
+	              true for i in 1:n_total_traces]
+	vis_phase2 = [i <= n_allphase_traces ? false :
+	              i <= n_line_traces     ? (i in phase_trace_indices[2]) :
+	              true for i in 1:n_total_traces]
+	vis_phase3 = [i <= n_allphase_traces ? false :
+	              i <= n_line_traces     ? (i in phase_trace_indices[3]) :
+	              true for i in 1:n_total_traces]
 
 	layout = PlotlyJS.Layout(
 		title = "Distribution System Map",
