@@ -50,22 +50,22 @@ data_dictionary_for_plots = Dict([
 using Plots, JuMP
 
 function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_plots, time_steps_for_results_dashboard, data_eng; powerflowplot_arrowlength=0.01, plot_types="dynamic", plot_bus_labels=true, plot_phase_labels=true, static_plot_parameters=Dict())
-    print("\n debug 5")
+    
     # Extract some information from the inputs dictionary
     Multinode_Inputs = data_dictionary_for_plots["Multinode_Inputs"]
     DataDictionaryForEachNode = data_dictionary_for_plots["DataDictionaryForEachNode"]
     TimeStamp = data_dictionary_for_plots["TimeStamp"]
     CompiledResults = data_dictionary_for_plots["CompiledResults"]
 
-    print("\n debug 6")
+    
     # Create a folder for the results
     folder = filepath_for_saving_plots*"/plots_"*TimeStamp
     mkdir(folder)
-    print("\n debug 7")
+    
     phases_for_each_line =  REopt.create_dictionary_of_phases_for_each_line(data_eng)  # Initiate this dictionary with just the phases for each line; 
     phases_for_each_line_and_transformer_line, lines, transformer_busses = REopt.add_transformer_lines_to_the_dictionary(data_eng, collect(keys(data_eng["line"])), phases_for_each_line) # Then add the line IDs and phases for each transformer, representing the transformers as lines
     all_lines_including_transformers_as_lines =  collect(keys(phases_for_each_line_and_transformer_line))
-    print("\n debug 8")
+    
     if length(filepath_for_saving_plots) > 75
         @warn "The file path entered into the multinode_create_plots function is long and the code may error when trying to save the plots"
     end
@@ -93,7 +93,7 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
     if data_dictionary_for_plots["voltage_plot_time_step"] > length(Multinode_Inputs.PMD_time_steps)
         throw(@error("In the Multinode_Inputs dictionary, the voltage_plot_time_step should be less than or equal to the number of timesteps in PMD_time_steps"))
     end
-    print("\n debug 9")
+    
     # Plot outage simulator results if the outage simulator was run
     if Multinode_Inputs.run_outage_simulator
         mkdir(folder*"/Outage_Simulation_Plots")
@@ -125,24 +125,24 @@ function multinode_create_plots(data_dictionary_for_plots, filepath_for_saving_p
             end
         end
     end
-    print("\n debug 10")
+    
     # Create a voltage plot
     if Multinode_Inputs.number_of_phases == 1
         REoptPlots.Create_Voltage_Plot(CompiledResults, TimeStamp, data_dictionary_for_plots["voltage_plot_time_step"], folder)
     else
         @info "The creation of the voltage plots is currently only applicable for single phase systems"
     end
-print("\n debug 11")
+
     # Plot the power flows on a map, if bus coordinates were provided
     if Multinode_Inputs.bus_coordinates != ""
         PMD_line_info = data_eng["line"]
         lines_in_PMD = collect(keys(data_eng["line"])) # Vector of line names based on data in PMD (which doesn't represent the transformers as lines)  
         busses_in_PMD = collect(keys(data_eng["bus"]))
-        print("\n debug 12")
+        
         REoptPlots.PlotPowerFlows(CompiledResults, TimeStamp, time_steps_for_results_dashboard, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=plot_bus_labels, plot_phase_labels=plot_phase_labels, powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
-print("\n debug 13")
+
         REoptPlots.Aggregated_PowerFlows_Plot(CompiledResults, TimeStamp, Multinode_Inputs, data_dictionary_for_plots["REoptInputs_Combined"], data_dictionary_for_plots["substation_power_flow"], folder)
-print("\n debug 14")
+
         REoptPlots.CreateResultsMap(CompiledResults, Multinode_Inputs, TimeStamp, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=plot_bus_labels, plot_phase_labels=plot_phase_labels, plot_types=plot_types, static_plot_parameters=static_plot_parameters)
     end
     
@@ -168,44 +168,116 @@ function CreateResultsMap(results, Multinode_Inputs, TimeStamp, folder, all_line
 
         traces = PlotlyJS.GenericTrace[] # initiate the vector as a vector of PlotlyJS traces
 
-        # Add traces for the nodes
-        for i in 1:length(bus_key_values)
-            trace_bus = PlotlyJS.scattergeo(;locationmode = "USA-states",
-                            lon = [bus_cords[bus_key_values[i]][1]],
-                            lat = [bus_cords[bus_key_values[i]][2]],
-                            marker = PlotlyJS.attr(size=8, color="blue"),
-                            mode = "markers+text",
-                            text = ["$(bus_key_values[i]) $(results_by_node[bus_key_values[i]])"], # Show the technology sizing next to each node
-                            textposition = "right"
-                            )
-            push!(traces, trace_bus)
-        end
+        # Split buses into "with tech" (PV/Battery/Generator sized) and "without tech".
+        # CollectResultsByNode returns "" for buses with no tech, otherwise a string starting with ": ".
+        buses_with_tech    = [b for b in bus_key_values if results_by_node[b] != ""]
+        buses_without_tech = [b for b in bus_key_values if results_by_node[b] == ""]
 
-        # Add traces for the lines
+        # Add traces for the lines.
+        # Note: bus_cords / line_cords entries are stored as [Latitude, Longitude]
+        # (see CollectMapInformation), so index [1] is lat (y) and index [2] is lon (x).
         for i in 1:length(line_key_values)
-            trace_line = PlotlyJS.scattergeo(; #locationmode = "USA-states",
-                        lon = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]],
-                        lat = [line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]],
+            trace_line = PlotlyJS.scatter(
+                        x = [line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]],
+                        y = [line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]],
                         mode = "lines",
+                        hoverinfo = "none",
                         line = PlotlyJS.attr(color = "black", width = 2))
             push!(traces, trace_line)
         end
-        geo = PlotlyJS.attr(scope = "usa",
-                    projection_type = "albers usa",
-                    showland = true,
-                    landcolor = "rgb(217,217,217)",
-                    subunitwidth =1,
-                    countrywidth=1,
-                    #fitbounds = "locations",
-                    center = PlotlyJS.attr(lon = mean(vcat([bus_cords[k][1] for k in bus_key_values]...)),
-                                           lat = mean(vcat([bus_cords[k][2] for k in bus_key_values]...))
-                                           ),
-                    projection = PlotlyJS.attr(scale = 400), # TODO: automatically estimate the scale value based on the size of the region (scale of 1 shows the entire globe I think, scale of 30 is for a city region I think)
-                    subunitcolor = "rgb(255,255,255)",
-                    countrycolor = "rgb(255,255,255)")
-        layout = PlotlyJS.Layout(; title="Multinode Results and Layout", geo=geo,  showlegend = false)
-        
-        p = PlotlyJS.plot(traces,layout)
+
+        # Start of section of code generated by AI
+        # Bus markers — no-tech buses (one trace, hover shows bus name)
+        if !isempty(buses_without_tech)
+            push!(traces, PlotlyJS.scatter(
+                x = [bus_cords[b][2] for b in buses_without_tech],
+                y = [bus_cords[b][1] for b in buses_without_tech],
+                mode = "markers",
+                marker = PlotlyJS.attr(size=8, color="blue"),
+                text = buses_without_tech,
+                hoverinfo = "text",
+                name = "Buses (no tech)"
+            ))
+        end
+
+        # Bus markers — buses with tech (one trace, hover shows bus name + tech)
+        if !isempty(buses_with_tech)
+            push!(traces, PlotlyJS.scatter(
+                x = [bus_cords[b][2] for b in buses_with_tech],
+                y = [bus_cords[b][1] for b in buses_with_tech],
+                mode = "markers",
+                marker = PlotlyJS.attr(size=8, color="blue"),
+                text = ["$(b)$(results_by_node[b])" for b in buses_with_tech],
+                hoverinfo = "text",
+                name = "Buses (with tech)"
+            ))
+        end
+
+        # Build draggable annotation labels — separated so each group can be toggled independently.
+        # Annotations are draggable with editable=true config (true point-and-drag, like PlotPowerFlows).
+        no_tech_labels = [PlotlyJS.attr(
+                            x = bus_cords[b][2],
+                            y = bus_cords[b][1],
+                            text = b,
+                            xanchor = "left",
+                            yanchor = "bottom",
+                            showarrow = true,
+                            arrowhead = 0,
+                            arrowwidth = 0.5,
+                            font = PlotlyJS.attr(color = "black", size = 11)
+                          ) for b in buses_without_tech]
+
+        with_tech_labels = [PlotlyJS.attr(
+                              x = bus_cords[b][2],
+                              y = bus_cords[b][1],
+                              text = "$(b)$(results_by_node[b])",
+                              xanchor = "left",
+                              yanchor = "bottom",
+                              showarrow = true,
+                              arrowhead = 0,
+                              arrowwidth = 0.5,
+                              font = PlotlyJS.attr(color = "blue", size = 11)
+                            ) for b in buses_with_tech]
+
+        annotations_all       = vcat(no_tech_labels, with_tech_labels)
+        annotations_only_tech = with_tech_labels
+        annotations_only_no_tech = no_tech_labels
+        annotations_none      = []
+
+        layout = PlotlyJS.Layout(
+            title = "Multinode Results and Layout",
+            showlegend = false,
+            editable = true,
+            xaxis = PlotlyJS.attr(title = "Longitude", showgrid = true, zeroline = false, scaleanchor = "y", scaleratio = 1),
+            yaxis = PlotlyJS.attr(title = "Latitude",  showgrid = true, zeroline = false),
+            hovermode = "closest",
+            annotations = annotations_all,
+            updatemenus = [PlotlyJS.attr(
+                type = "buttons",
+                direction = "down",
+                showactive = false,
+                x = 1.02, xanchor = "left",
+                y = 1.0,  yanchor = "top",
+                buttons = [
+                    PlotlyJS.attr(label = "Show all node labels",
+                                  method = "relayout",
+                                  args = [PlotlyJS.attr(annotations = annotations_all)]),
+                    PlotlyJS.attr(label = "Show only no-tech labels",
+                                  method = "relayout",
+                                  args = [PlotlyJS.attr(annotations = annotations_only_no_tech)]),
+                    PlotlyJS.attr(label = "Show only tech labels",
+                                  method = "relayout",
+                                  args = [PlotlyJS.attr(annotations = annotations_only_tech)]),
+                    PlotlyJS.attr(label = "Hide all node labels",
+                                  method = "relayout",
+                                  args = [PlotlyJS.attr(annotations = annotations_none)]),
+                ]
+            )]
+        )
+
+        config = PlotlyJS.PlotConfig(editable = true)
+        # End of section of code generated by AI
+        p = PlotlyJS.Plot(traces, layout; config = config)
         PlotlyJS.savefig(p, folder*"/Results_and_Layout.html")
     end
     
@@ -640,13 +712,13 @@ end
 
 function PlotPowerFlows(results, TimeStamp, REopt_timesteps_for_dashboard_InREoptTimes, folder, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD; plot_bus_labels=true, plot_phase_labels=true, file_suffix="", powerflowplot_arrowlength=powerflowplot_arrowlength, plot_types="dynamic+static", static_plot_parameters=Dict())
     # This function plots the power flows through the network
-    print("\n Debug 12.1")
+    
     Multinode_Inputs = results["Multinode_Inputs"]
     bus_key_values, line_key_values, bus_cords, line_cords, busses, substation_cords = REopt.CollectMapInformation(results, Multinode_Inputs, all_lines_including_transformers_as_lines, lines_in_PMD, PMD_line_info, busses_in_PMD) 
     results_by_node = REopt.CollectResultsByNode(results, busses)
 
     Multinode_Inputs.display_information_during_modeling_run ? print("\n The substation coordinates are: $(substation_cords)") : nothing
-print("\n Debug 12.2")
+
     line_type = Dict()
     for line in all_lines_including_transformers_as_lines
         if line in lines_in_PMD
@@ -663,7 +735,7 @@ print("\n Debug 12.2")
     timesteps = REopt_timesteps_for_dashboard_InREoptTimes   
     
     model_total_timesteps = Int(8760*Multinode_Inputs.time_steps_per_hour) 
-print("\n Debug 12.3")
+
     if Multinode_Inputs.model_outages_with_outages_vector 
         PowerOutageIndicator = Array{String}(undef, model_total_timesteps)
         PowerOutageIndicator[:] .= "Not defined"
@@ -687,7 +759,7 @@ print("\n Debug 12.3")
     else
         PowerOutageIndicator = repeat([""], model_total_timesteps)
     end
-    print("\n Debug 12.4")
+    
     PowerFlowModelIndicator = Array{String}(undef, model_total_timesteps)
     PowerFlowModelIndicator[:] .= "Not defined"
     if Multinode_Inputs.apply_simple_powerflow_model_to_timesteps_that_do_not_use_PMD
@@ -725,7 +797,7 @@ print("\n Debug 12.3")
     Colors = [string("rgb(",Int(round(c[1])),",",Int(round(c[2])),",",Int(round(c[3])),")") for c in color_numbers]
         
     deleteat!(Colors, increments) # with 20 increments, there should only be 19 color bins
-print("\n Debug 12.5")
+
     # Determine the maximum power in the data that is being plotted:
     powerflow = results["Dictionary_LineFlow_Power_Series"]
     max_power = 0
@@ -774,7 +846,7 @@ print("\n Debug 12.5")
             line_colors[line][:] .= "rgb(85,85,85)"
         end
     end
-    print("\n Debug 12.6")
+    
     x_bus_values = zeros(length(keys(bus_cords)))
     y_bus_values = zeros(length(keys(bus_cords)))
 
@@ -807,7 +879,7 @@ print("\n Debug 12.5")
 
     start_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(start_day)) + Second(round(60*60*24*(start_day - floor(start_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
     end_datetime = Dates.format(DateTime(2021, 1, 1) + Day(floor(end_day)) + Second(round(60*60*24*(end_day - floor(end_day)))), "U d at HH:MM") # This line of code is based off of code suggested by generative AI
-print("\n Debug 12.7")
+
     if (Multinode_Inputs.number_of_phases == 1) || (plot_phase_labels == false)
         phase_labels = []
     elseif (Multinode_Inputs.number_of_phases == 2) || (Multinode_Inputs.number_of_phases == 3)
@@ -831,9 +903,9 @@ print("\n Debug 12.7")
     line_cords = Dict(lowercase(String(key)) => value for (key,value) in line_cords)
     bus_cords = Dict(lowercase(String(key)) => value for (key,value) in bus_cords)
     
-print("\n Debug 12.8")
+
     if (plot_types == "dynamic") || (plot_types=="dynamic+static")
-        print("\n Debug 12.9")
+        
         if plot_bus_labels != false
             bus_labels = [PlotlyJS.attr(x=bus_cords[bus_cord_key][2], y=bus_cords[bus_cord_key][1], text=bus_cord_key*results_by_node[bus_cord_key], xanchor="right", yanchor="bottom", showarrow=true) for bus_cord_key in collect(keys(bus_cords))]
         else
@@ -842,7 +914,7 @@ print("\n Debug 12.8")
 
         annotations_baseline = []
         annotations_baseline_with_bus_and_phase_labels = vcat(phase_labels, bus_labels)
-        print("\n Debug 12.10")
+        
         # Define the unchanging annotations as scatter plot data point labels to avoid issues with having annotations defined in each frame and in the overall plot layout
         frames = PlotlyJS.PlotlyFrame[ PlotlyJS.frame(             
                 data = vcat([PlotlyJS.scatter(x=[line_cords[line_key_values[i]][1][2], line_cords[line_key_values[i]][2][2]], y=[line_cords[line_key_values[i]][1][1], line_cords[line_key_values[i]][2][1]], mode="lines+markers",marker=PlotlyJS.attr(color="black"), line=PlotlyJS.attr(width=3, color = line_colors[line_key_values[i]][j])) for i in collect(1:length(line_cords))],
@@ -929,7 +1001,7 @@ print("\n Debug 12.8")
         p = PlotlyJS.Plot(data, layout, frames; config=config)
         PlotlyJS.savefig(p, folder*"/PowerFlowAnimation"*file_suffix*".html")       
     end
-print("\n Debug 12.11")
+
     if (plot_types == "static") || (plot_types=="dynamic+static")
 
         mkdir(folder*"/Static_powerflow_plots_per_timestep")
