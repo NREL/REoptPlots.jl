@@ -1331,7 +1331,10 @@ function MapOutageSimulatorResultsPlots(Multinode_Inputs, outage_survival_result
 end
 
 
-function create_distribution_system_map(eng_model_or_path, data_math, coordinates_csv_filepath; output_filepath="")
+function create_distribution_system_map(eng_model_or_path, data_math, coordinates_csv_filepath;
+                                        output_filepath="",
+                                        loops_per_phase::Union{Nothing,Dict}=nothing,
+                                        islands_per_phase::Union{Nothing,Dict}=nothing)
 	# This function was generated using AI
     #=
 	Creates an interactive overhead map of the distribution system showing buses as points
@@ -1346,6 +1349,25 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 	  coordinates_csv_filepath : path to a CSV with columns [Bus, Latitude, Longitude]
 	  output_filepath          : (optional) if provided, saves the interactive plot as an HTML
 	                             file at this path (e.g. "map.html")
+	  loops_per_phase          : (optional) Dict mapping phase Int (1, 2, 3) to the
+	                             `loop_edges` vector returned by `REopt.detect_network_loops`.
+	                             Each entry is a NamedTuple with fields (type, name, f_bus, t_bus, phases).
+	                             When supplied, a "Show Loops" button appears that highlights
+	                             those loop-closing edges in orange (dashed). The phase-filter
+	                             buttons restrict which phase's loops are shown.
+	  islands_per_phase        : (optional) Dict mapping phase Int (1, 2, 3) to the
+	                             `island_groups` vector returned by `REopt.detect_islanded_buses`.
+	                             Each entry is a Vector{Vector{String}} (one bus-name vector
+	                             per islanded component). When supplied, a "Show Islands"
+	                             button appears that highlights every line whose two endpoints
+	                             both lie within the same island group, in red. The
+	                             phase-filter buttons restrict which phase's islands are shown.
+
+	Highlight behaviour:
+	  - "Show Islands" and "Show Loops" are mutually exclusive (selecting one turns the
+	    other off via the "Hide Highlights" option).
+	  - When a specific phase is selected, only that phase's islands/loops are highlighted.
+	  - When "All Phases" is selected, islands/loops from any phase are highlighted.
 
 	Returns a PlotlyJS plot object. Call display(p) to show it interactively,
 	or PlotlyJS.savefig(p, "map.html") to save it.
@@ -1546,25 +1568,277 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 		end
 	end
 
+	# --- Island and loop highlight overlays (one trace per phase per type) ---
+	# We render up to 6 overlay traces (3 phases × {islands, loops}). Visibility
+	# is controlled by the phase-filter buttons; on/off rendering is controlled
+	# by the highlight buttons via the trace `opacity` property. This keeps the
+	# two menus independent: phase selection hides non-matching overlays (via
+	# `visible=false`), while the highlight button toggles whether the visible
+	# overlays are actually drawn (via `opacity=1.0` vs `0.0`).
+	island_overlay_indices = Dict{Int, Int}()   # phase -> 1-based trace index
+	loop_overlay_indices   = Dict{Int, Int}()
+
+	# Helper: collect set of (f, t) edges where both endpoints sit in the same island group
+	function _island_edges_for_phase(groups)
+		edge_set = Set{Tuple{String, String}}()
+		groups === nothing && return edge_set
+		for group in groups
+			grp_lc = Set(lowercase.(string.(group)))
+			for (_, line) in get(eng_model, "line", Dict())
+				f = lowercase(string(line["f_bus"]))
+				t = lowercase(string(line["t_bus"]))
+				if f in grp_lc && t in grp_lc
+					push!(edge_set, (f, t))
+				end
+			end
+			for (_, xfmr) in get(eng_model, "transformer", Dict())
+				bb = lowercase.(string.(xfmr["bus"]))
+				for i in 1:(length(bb) - 1)
+					f, t = bb[i], bb[i + 1]
+					if f in grp_lc && t in grp_lc
+						push!(edge_set, (f, t))
+					end
+				end
+			end
+		end
+		return edge_set
+	end
+
+	function _edges_to_xy(edge_iter)
+		xs = Float64[]; ys = Float64[]
+		for (f, t) in edge_iter
+			haskey(coords, f) && haskey(coords, t) || continue
+			lon1, lat1 = coords[f]
+			lon2, lat2 = coords[t]
+			push!(xs, lon1, lon2, NaN)
+			push!(ys, lat1, lat2, NaN)
+		end
+		return xs, ys
+	end
+
+	if islands_per_phase !== nothing
+		for ph in 1:3
+			xs, ys = _edges_to_xy(_island_edges_for_phase(get(islands_per_phase, ph, nothing)))
+			push!(traces, PlotlyJS.scatter(
+				x = xs, y = ys,
+				mode = "lines",
+				line = PlotlyJS.attr(color = "#e74c3c", width = 6),
+				name = "Phase $ph Islands",
+				legendgroup = "islands",
+				visible = true,    # phase menu controls eligibility
+				opacity = 0.0,     # highlight menu controls actual rendering
+				hoverinfo = "none",
+			))
+			island_overlay_indices[ph] = length(traces)
+		end
+	end
+
+	if loops_per_phase !== nothing
+        # AI was used to write this section of code
+		# Build a per-phase adjacency list once (lines + switches + transformer pairs
+		# that carry that phase). Each adjacency entry stores the neighbor bus plus
+		# the canonical edge tuple (f_lc, t_lc) so we can recover the original edge
+		# direction when adding it to the overlay.
+		function _adj_for_phase(ph::Int)
+			adj = Dict{String, Vector{Tuple{String, Tuple{String,String}}}}()
+			function _add_edge!(f_raw, t_raw, phases)
+				phase_filter_pass = isempty(phases) || (ph in phases)
+				phase_filter_pass || return
+				f = lowercase(string(f_raw)); t = lowercase(string(t_raw))
+				push!(get!(adj, f, Tuple{String, Tuple{String,String}}[]), (t, (f, t)))
+				push!(get!(adj, t, Tuple{String, Tuple{String,String}}[]), (f, (f, t)))
+			end
+			for (_, line) in get(eng_model, "line", Dict())
+				_add_edge!(line["f_bus"], line["t_bus"], Vector{Int}(get(line, "f_connections", Int[])))
+			end
+			for (_, sw) in get(eng_model, "switch", Dict())
+				_add_edge!(sw["f_bus"], sw["t_bus"], Vector{Int}(get(sw, "f_connections", Int[])))
+			end
+			for (_, xfmr) in get(eng_model, "transformer", Dict())
+				bb = xfmr["bus"]
+				conns = get(xfmr, "connections", Vector{Vector{Int}}())
+				for i in 1:(length(bb) - 1)
+					phs = !isempty(conns) && i <= length(conns) ? Vector{Int}(conns[i]) : Int[]
+					_add_edge!(bb[i], bb[i + 1], phs)
+				end
+			end
+			return adj
+		end
+
+		# BFS from src to dst in `adj`, treating the single closing edge as removed.
+		# Returns Vector{Tuple{String,String}} of edges along the path (or empty).
+		function _path_edges(adj, src::String, dst::String, blocked::Tuple{String,String})
+			haskey(adj, src) || return Tuple{String,String}[]
+			haskey(adj, dst) || return Tuple{String,String}[]
+			parent_edge = Dict{String, Tuple{String,String}}()  # node -> edge used to reach it
+			parent      = Dict{String, String}()                 # node -> predecessor
+			q = String[src]
+			visited = Set{String}([src])
+			found = false
+			while !isempty(q)
+				u = popfirst!(q)
+				u == dst && (found = true; break)
+				for (v, etup) in get(adj, u, ())
+					# Skip the closing edge (compare both orientations)
+					(etup == blocked || etup == (blocked[2], blocked[1])) && continue
+					v in visited && continue
+					push!(visited, v)
+					parent[v]      = u
+					parent_edge[v] = etup
+					push!(q, v)
+				end
+			end
+			found || return Tuple{String,String}[]
+			edges = Tuple{String,String}[]
+			cur = dst
+			while cur != src
+				push!(edges, parent_edge[cur])
+				cur = parent[cur]
+			end
+			return edges
+		end
+
+		for ph in 1:3
+			edges_ph = get(loops_per_phase, ph, nothing)
+			loop_edge_set = Set{Tuple{String,String}}()
+			if edges_ph !== nothing && !isempty(edges_ph)
+				adj = _adj_for_phase(ph)
+				for e in edges_ph
+					f = lowercase(string(e.f_bus))
+					t = lowercase(string(e.t_bus))
+					push!(loop_edge_set, (f, t))                      # closing edge itself
+					for pe in _path_edges(adj, f, t, (f, t))          # rest of the cycle
+						push!(loop_edge_set, pe)
+					end
+				end
+			end
+			xs, ys = _edges_to_xy(loop_edge_set)
+			push!(traces, PlotlyJS.scatter(
+				x = xs, y = ys,
+				mode = "lines",
+				line = PlotlyJS.attr(color = "#f39c12", width = 6, dash = "4px,3px"),
+				name = "Phase $ph Loops",
+				legendgroup = "loops",
+				visible = true,
+				opacity = 0.0,
+				hoverinfo = "none",
+			))
+			loop_overlay_indices[ph] = length(traces)
+		end
+	end
+
+	overlay_island_idx_set = Set(values(island_overlay_indices))
+	overlay_loop_idx_set   = Set(values(loop_overlay_indices))
+	overlay_all_idx_set    = union(overlay_island_idx_set, overlay_loop_idx_set)
+	has_overlays           = !isempty(overlay_all_idx_set)
+
 	# --- Phase-filter buttons ---
 	# Build per-button visibility arrays (one Bool per trace).
 	# Traces i <= n_allphase_traces : All-Phases voltage-level traces
 	# Traces in phase_trace_indices[p] : Phase p voltage-level traces
-	# Traces beyond n_line_traces   : transformers, buses, substation — always visible
+	# Overlay traces (islands/loops) : visible only on matching-phase view (or "All Phases")
+	# All other traces (transformers, buses, substation) : always visible
 	n_total_traces = length(traces)
 	all_indices    = collect(0:(n_total_traces - 1))  # 0-based for Plotly.js
 
-	vis_all    = [i <= n_allphase_traces ? true  :
-	              i <= n_line_traces     ? false : true for i in 1:n_total_traces]
-	vis_phase1 = [i <= n_allphase_traces ? false :
-	              i <= n_line_traces     ? (i in phase_trace_indices[1]) :
-	              true for i in 1:n_total_traces]
-	vis_phase2 = [i <= n_allphase_traces ? false :
-	              i <= n_line_traces     ? (i in phase_trace_indices[2]) :
-	              true for i in 1:n_total_traces]
-	vis_phase3 = [i <= n_allphase_traces ? false :
-	              i <= n_line_traces     ? (i in phase_trace_indices[3]) :
-	              true for i in 1:n_total_traces]
+	function _vis_for_phase(p::Union{Symbol,Int})
+		# p == :all → All-Phases view; p ∈ {1,2,3} → that phase only
+		vis = Vector{Bool}(undef, n_total_traces)
+		for i in 1:n_total_traces
+			if i <= n_allphase_traces
+				vis[i] = (p === :all)
+			elseif i <= n_line_traces
+				vis[i] = (p !== :all) && (i in phase_trace_indices[p])
+			elseif i in overlay_all_idx_set
+				if p === :all
+					vis[i] = true
+				else
+					vis[i] = (get(island_overlay_indices, p, -1) == i) ||
+					         (get(loop_overlay_indices,   p, -1) == i)
+				end
+			else
+				vis[i] = true   # transformer / bus / substation
+			end
+		end
+		return vis
+	end
+
+	vis_all    = _vis_for_phase(:all)
+	vis_phase1 = _vis_for_phase(1)
+	vis_phase2 = _vis_for_phase(2)
+	vis_phase3 = _vis_for_phase(3)
+
+	# --- Highlight buttons (only created when overlay data is supplied) ---
+	# Each highlight button writes ONLY the `opacity` attribute on overlay traces,
+	# leaving the `visible` state set by the phase-filter menu untouched. The two
+	# menus therefore compose cleanly: an overlay is drawn iff phase-filter set it
+	# visible AND the active highlight button set its opacity > 0.
+	overlay_indices_sorted = sort(collect(overlay_all_idx_set))
+	overlay_indices_0based = overlay_indices_sorted .- 1
+	opacity_none    = [0.0  for _ in overlay_indices_sorted]
+	opacity_islands = [i in overlay_island_idx_set ? 1.0 : 0.0 for i in overlay_indices_sorted]
+	opacity_loops   = [i in overlay_loop_idx_set   ? 1.0 : 0.0 for i in overlay_indices_sorted]
+
+	phase_menu = PlotlyJS.attr(
+		type       = "buttons",
+		direction  = "right",
+		showactive = true,
+		x = 0.5,  xanchor = "center",
+		y = 1.12, yanchor = "bottom",
+		pad = PlotlyJS.attr(t = 2, b = 2, l = 4, r = 4),
+		buttons = [
+			PlotlyJS.attr(
+				label  = "All Phases",
+				method = "restyle",
+				args   = [Dict("visible" => vis_all), all_indices]
+			),
+			PlotlyJS.attr(
+				label  = "Phase 1",
+				method = "restyle",
+				args   = [Dict("visible" => vis_phase1), all_indices]
+			),
+			PlotlyJS.attr(
+				label  = "Phase 2",
+				method = "restyle",
+				args   = [Dict("visible" => vis_phase2), all_indices]
+			),
+			PlotlyJS.attr(
+				label  = "Phase 3",
+				method = "restyle",
+				args   = [Dict("visible" => vis_phase3), all_indices]
+			),
+		]
+	)
+
+	menus = Any[phase_menu]
+	if has_overlays
+		highlight_menu = PlotlyJS.attr(
+			type       = "buttons",
+			direction  = "right",
+			showactive = true,
+			x = 0.5,  xanchor = "center",
+			y = 1.04, yanchor = "bottom",
+			pad = PlotlyJS.attr(t = 2, b = 2, l = 4, r = 4),
+			buttons = [
+				PlotlyJS.attr(
+					label  = "Hide Highlights",
+					method = "restyle",
+					args   = [Dict("opacity" => opacity_none), overlay_indices_0based]
+				),
+				PlotlyJS.attr(
+					label  = "Show Islands",
+					method = "restyle",
+					args   = [Dict("opacity" => opacity_islands), overlay_indices_0based]
+				),
+				PlotlyJS.attr(
+					label  = "Show Loops",
+					method = "restyle",
+					args   = [Dict("opacity" => opacity_loops), overlay_indices_0based]
+				),
+			]
+		)
+		push!(menus, highlight_menu)
+	end
 
 	layout = PlotlyJS.Layout(
 		title = "Distribution System Map",
@@ -1578,36 +1852,8 @@ function create_distribution_system_map(eng_model_or_path, data_math, coordinate
 		yaxis = PlotlyJS.attr(title = "Latitude", showgrid = true, zeroline = false),
 		hovermode = "closest",
 		showlegend = true,
-		margin = PlotlyJS.attr(l = 140),   # extra left margin for the button panel
-		updatemenus = [PlotlyJS.attr(
-			type       = "buttons",
-			direction  = "down",
-			showactive = true,
-			x = 1.02, xanchor = "left",
-			y = 0.5,   yanchor = "top",
-			buttons = [
-				PlotlyJS.attr(
-					label  = "All Phases",
-					method = "restyle",
-					args   = [Dict("visible" => vis_all), all_indices]
-				),
-				PlotlyJS.attr(
-					label  = "Phase 1",
-					method = "restyle",
-					args   = [Dict("visible" => vis_phase1), all_indices]
-				),
-				PlotlyJS.attr(
-					label  = "Phase 2",
-					method = "restyle",
-					args   = [Dict("visible" => vis_phase2), all_indices]
-				),
-				PlotlyJS.attr(
-					label  = "Phase 3",
-					method = "restyle",
-					args   = [Dict("visible" => vis_phase3), all_indices]
-				),
-			]
-		)]
+		margin = PlotlyJS.attr(t = 110),   # extra top margin so the button rows sit above the plot
+		updatemenus = menus,
 	)
 
 	p = PlotlyJS.plot(traces, layout)
