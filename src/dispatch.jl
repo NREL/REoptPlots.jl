@@ -165,14 +165,26 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
         fill = nothing,
         line=attr(width=1, color="black", dash="dot")
     ))
+    # A tech's results may be a single Dict or a Vector of Dicts (e.g. multiple PV)
+    tech_dicts = Any[]
+    for tech in tech_names
+        if haskey(d, tech)
+            if isa(d[tech], Dict)
+                push!(tech_dicts, d[tech])
+            else
+                append!(tech_dicts, d[tech])
+            end
+        end
+    end
+
     # Sum all series that contain "electric_to_load_series_kw" or "storage_to_load_series_kw" to get total electric load line plot
     total_load = sum(
-        get(d[tech], "electric_to_load_series_kw", zeros(length(dr_v))) +
-        get(d[tech], "storage_to_load_series_kw", zeros(length(dr_v)))
-        for tech in tech_names if haskey(d, tech) && 
-            (haskey(d[tech], "electric_to_load_series_kw") || haskey(d[tech], "storage_to_load_series_kw")) && 
-            (!isempty(get(d[tech], "electric_to_load_series_kw", [])) || !isempty(get(d[tech], "storage_to_load_series_kw", []))) && 
-            (sum(get(d[tech], "electric_to_load_series_kw", [0.0])) != 0.0 || sum(get(d[tech], "storage_to_load_series_kw", [0.0])) != 0.0)
+        get(sub_dict, "electric_to_load_series_kw", zeros(length(dr_v))) +
+        get(sub_dict, "storage_to_load_series_kw", zeros(length(dr_v)))
+        for sub_dict in tech_dicts if 
+            (haskey(sub_dict, "electric_to_load_series_kw") || haskey(sub_dict, "storage_to_load_series_kw")) && 
+            (!isempty(get(sub_dict, "electric_to_load_series_kw", [])) || !isempty(get(sub_dict, "storage_to_load_series_kw", []))) && 
+            (sum(get(sub_dict, "electric_to_load_series_kw", [0.0])) != 0.0 || sum(get(sub_dict, "storage_to_load_series_kw", [0.0])) != 0.0)
     )
     push!(traces, scatter(;
         name = "Total Electric Load",
@@ -290,7 +302,7 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
                     if tech == "PV" && !isa(d[tech], Dict)
                         for i in range(1,length(d[tech]))
                             sub_dict = d[tech][i]
-                            if haskey(sub_dict, key) && sum(sub_dict[key]) != 0.0
+                            if haskey(sub_dict, key) && !isempty(sub_dict[key]) && sum(sub_dict[key]) != 0.0
                                     
                                 #invisble line for plotting
                                 push!(traces, scatter(
