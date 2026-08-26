@@ -408,6 +408,205 @@ function plot_electric_dispatch(d::Dict; title="Electric Systems Dispatch", save
 end
 
 
+"""
+    get_outage_series(outages::Dict, key::String, outage_index::Int, duration_index::Int)
+
+Pull a single outage's time series out of an `Outages` result, which is nested as
+[time step][outage][outage duration].
+"""
+function get_outage_series(outages::Dict, key::String, outage_index::Int, duration_index::Int)
+    if !haskey(outages, key) || isempty(outages[key])
+        return Float64[]
+    end
+    return [
+        begin
+            val = ts[outage_index]
+            val isa AbstractArray ? Float64(val[duration_index]) : Float64(val)
+        end
+        for ts in outages[key]
+    ]
+end
+
+
+function plot_outage_dispatch(d::Dict, outage_index::Int; title="Outage $(outage_index) Dispatch", 
+    save_html=false, show_soc=false, duration_index::Int=1)
+
+    if !haskey(d, "Outages") || !haskey(d["Outages"], "critical_loads_per_outage_series_kw")
+        error("Results must contain Outages.critical_loads_per_outage_series_kw to plot outage dispatch.")
+    end
+    outages = d["Outages"]
+
+    n_outages = length(first(outages["critical_loads_per_outage_series_kw"]))
+    if !(1 <= outage_index <= n_outages)
+        throw(ArgumentError("outage_index must be between 1 and $(n_outages)"))
+    end
+
+    critical_load = get_outage_series(outages, "critical_loads_per_outage_series_kw", outage_index, duration_index)
+    n_steps = length(critical_load)
+
+    # outage series only span the outage, so the time step length comes from the annual load series
+    interval = haskey(d, "ElectricLoad") ? check_time_interval(d["ElectricLoad"]["load_series_kw"]) : Dates.Hour(1)
+    hours_per_step = Dates.value(Dates.Minute(interval)) / 60
+    dr_v = collect(0:n_steps-1) .* hours_per_step
+
+    traces = GenericTrace[]
+    layout = Layout(
+        hovermode="closest",
+        hoverlabel_align="left",
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font_size=18,
+        xaxis=attr(showline=true, ticks="outside", showgrid=false,linewidth=1.5, zeroline=false),
+        yaxis=attr(showline=true, ticks="outside", showgrid=true,linewidth=1.5, zeroline=false, color="black"),
+        title = title,
+        xaxis_title = "Hours Into Outage",
+        yaxis_title = "Power (kW)",
+        xaxis_rangeslider_visible=true,
+        legend=attr(x=1.17, y=0.5, font=attr(size=14,color="black")))
+
+    tech_names = ["PV", "Wind", "CHP", "Generator"]
+    prefixes = Dict(
+        "PV" => "pv",
+        "Wind" => "wind",
+        "CHP" => "chp",
+        "Generator" => "generator"
+    )
+    suffixes = ["to_load", "to_storage", "curtailed"]
+    txts = Dict(
+        "to_load" => "Serving Load",
+        "to_storage" => "Charging Storage",
+        "curtailed" => "Curtailed"
+    )
+
+    colors = Dict()
+    colors["PV"] = Dict(
+        "to_load" => "RGBA(255, 89, 0, 1.0)",
+        "to_storage" => "RGBA(212, 23, 155, 1.0)",
+        "curtailed" => "RGBA(255, 210, 82, 1.0)"
+    )
+    colors["Wind"] = Dict(
+        "to_load" => "lightskyblue1",
+        "to_storage" => "deepskyblue3",
+        "curtailed" => "cadetblue1"
+    )
+    colors["CHP"] = Dict(
+        "to_load" => "darkorange2",
+        "to_storage" => "orange",
+        "curtailed" => "RGBA(57, 254, 255, 1.0)"
+    )
+    colors["Generator"] = Dict(
+        "to_load" => "rebeccapurple",
+        "to_storage" => "mediumorchid3",
+        "curtailed" => "thistle1"
+    )
+
+    ### Critical load line plot
+    push!(traces, scatter(;
+        name = "Critical Load",
+        x = dr_v,
+        y = critical_load,
+        mode = "lines",
+        fill = nothing,
+        line=attr(width=1, color="black")
+    ))
+
+    # Collect the stacked series in plotting order: storage discharge, then each tech serving load, 
+    # charging storage, and curtailed
+    stacked = Tuple{String,String,Vector{Float64}}[]
+    discharge = get_outage_series(outages, "storage_discharge_series_kw", outage_index, duration_index)
+    if !isempty(discharge) && sum(discharge) != 0.0
+        push!(stacked, ("ElectricStorage Serving Load", "#003A00", discharge))
+    end
+    for suffix in suffixes
+        for tech in tech_names
+            series = get_outage_series(outages, "$(prefixes[tech])_$(suffix)_series_kw", outage_index, duration_index)
+            if !isempty(series) && sum(series) != 0.0
+                push!(stacked, (tech * " " * txts[suffix], colors[tech][suffix], series))
+            end
+        end
+    end
+
+    cumulative_data = zeros(n_steps)
+    for (name, color, series) in stacked
+        #invisble line for plotting
+        push!(traces, scatter(
+            name = "invisible",
+            x = dr_v,
+            y = cumulative_data,
+            mode = "lines",
+            fill = nothing,
+            line = attr(width = 0),
+            showlegend = false,
+            hoverinfo = "skip",
+        ))
+
+        cumulative_data = cumulative_data .+ series
+
+        push!(traces, scatter(;
+            name = name,
+            x = dr_v,
+            y = cumulative_data,
+            mode = "lines",
+            fill = "tonexty",
+            line = attr(width=0, color = color)
+        ))
+    end
+
+    if show_soc
+        soc = get_outage_series(outages, "soc_series_fraction", outage_index, duration_index)
+        if !isempty(soc)
+            ### Battery SOC line plot
+            push!(traces, scatter(
+                name = "Battery State of Charge",
+                x = dr_v,
+                y = soc * 100,
+                yaxis="y2",
+                line = attr(
+                    dash= "dashdot",
+                    width = 1
+                ),
+                marker = attr(
+                    color="rgb(100,100,100)"
+                ),
+            ))
+
+            layout = Layout(
+                hovermode="closest",
+                hoverlabel_align="left",
+                plot_bgcolor="white",
+                paper_bgcolor="white",
+                font_size=18,
+                xaxis=attr(showline=true, ticks="outside", showgrid=false,
+                    linewidth=1.5, zeroline=false),
+                yaxis=attr(showline=true, ticks="outside", showgrid=false,
+                    linewidth=1.5, zeroline=false),
+                title = title,
+                xaxis_title = "Hours Into Outage",
+                yaxis_title = "Power (kW)",
+                xaxis_rangeslider_visible=true,
+                legend=attr(x=1.17, y=0.5, 
+                            font=attr(
+                            size=14,
+                            color="black")
+                            ),
+                yaxis2 = attr(
+                    title = "State of Charge (Percent)",
+                    overlaying = "y",
+                    side = "right"
+                ))
+        end
+    end
+
+    p = plot(traces, layout)
+
+    if save_html
+        savefig(p, replace(title, " " => "_") * ".html")
+    end
+
+    plot(traces, layout)  # will not produce plot in a loop
+end
+
+
 function plot_heating_thermal_dispatch(d::Dict; title="Thermal Systems Dispatch", save_html=false, year=2017, 
     other_timeseries::Array{<:Real,1} = Real[], other_timeseries_name::String = "", other_timeseries_units::String = "")
 
